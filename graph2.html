@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <script type="text/javascript">
+            function sigmoid(x) {
+                return torch.function(torch.const(1).div(torch.const(1).add(torch.const(Math.E).pow(torch.tensor(x).minus()))));
+            }
+
+            function activation(x) {
+                return 1.0 / (1.0 + Math.exp(-x));
+            }
+
+            function derive(x) {
+                return activation(x) * (1-activation(x));
+            }
+
+            function linear(x, w, b) {
+                return torch.function(x.mul(w).add(b));
+            }
+
+            function loss(y_, y) {
+                return torch.function(torch.tensor(y_).sub(y));
+            }
+
+            // console.log(sigmoid(10));
+            // console.log(activation(10));
+            // console.log(sigmoid(10).backward());
+            // console.log(derive(10));
+ 
+            var x = torch.tensor([1, 2]).transpose();
+            var w = torch.tensor([1]);
+            var b = torch.tensor(0.1);
+            var y = torch.tensor([0, 1]).transpose();
+            // console.log(y);
+            var a  = linear(x, w, b);
+            // console.log(a);
+            var y_ = sigmoid(a);
+            // console.log(y_);
+            var loss = loss(y_, y);
+            loss.backward();
+            // console.log(loss);
+        </script>
+</body>
+</html>
