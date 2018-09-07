@@ -13,6 +13,7 @@ function Function(head) {
     this.next = head.backward1();
     this.grad = null;
     this.class = 'function';
+    this.name = "";
 }
 
 Function.prototype.backward = function () {
@@ -20,9 +21,18 @@ Function.prototype.backward = function () {
         this.choose(this.next[i]);
         var d = this.head.derive();
         this.unchoose();
-        // console.log(d);
+ 
+        var grad = null;
+        if (arguments.length === 1) {
+            grad = arguments[0].mul(d);
+        } else {
+            grad = this.head.mul(d);
+        }
+        // console.log(this.name);
         // console.log(this.head);
-        var grad = this.head.mul(d);
+        // console.log(arguments[0]);
+        // console.log(d);
+        // console.log(this.next[i].name);
         // console.log(grad);
         this.next[i].grad = grad;
         if (this.next[i].func !== null) {
@@ -62,6 +72,7 @@ function Tensor() {
     this.constant = false;
     this.class = 'tensor';
     this.func = null;
+    this.name = "";
     
     if (args.length === 1) {
         if (Array.isArray(args[0])) {
@@ -131,6 +142,26 @@ Tensor.prototype.transpose = function () {
     return z;
 }
 
+Tensor.prototype.transpose_ = function () {
+    if (this.rows == 0 && this.cols == 0) {
+        return this;
+    }
+
+    var z = torch.tensor();
+    for (var i=0; i<this.cols; i++) {
+        var rows = [];
+        for (var j=0; j<this.rows; j++) {
+            rows.push(this.mat[j][i]);
+        }
+        z.mat.push(rows);
+    }
+    var temp = this.rows;
+    z.rows = this.cols;
+    z.cols = temp;
+
+    return z;
+}
+
 Tensor.prototype.mul = function (y) {
     var z = torch.tensor();
     if (typeof y == "number") {
@@ -160,6 +191,10 @@ Tensor.prototype.mul = function (y) {
                 z.rows = 0;
                 z.cols = 0;
                 z.mat = 0;
+            } else if (y.rows == 0 && y.cols == 0) {
+                z.rows = y.rows;
+                z.cols = y.cols;
+                z.mat = this.mat * y.mat;
             } else {
                 z.rows = y.rows;
                 z.cols = y.cols;
@@ -171,6 +206,27 @@ Tensor.prototype.mul = function (y) {
                     z.mat.push(row);
                 }
             }            
+        } else if (this.rows == 1 && this.cols == 1) {
+            if (this.mat[0] == 0) {
+                z.rows = 0;
+                z.cols = 0;
+                z.mat = 0;
+            } if (y.rows == 0 && y.cols == 0) {
+                z.rows = y.rows;
+                z.cols = y.cols;
+                z.mat = this.mat[0][0] * y.mat;
+            } else {
+                z.rows = y.rows;
+                z.cols = y.cols;
+                z.mat = [];
+                for (var i=0; i<y.rows; i++) {
+                    var row = [];
+                    for (var j=0; j<y.cols; j++) {
+                        row.push(this.mat[0][0] * y.mat[i][j]);
+                    }
+                    z.mat.push(row);
+                }
+            }
         } else {
             if (y.cols == 0 && y.rows == 0) {
                 z.rows = this.rows;
@@ -185,15 +241,26 @@ Tensor.prototype.mul = function (y) {
             } else {
                 z.rows = this.rows;
                 z.cols = y.cols;
-            
-                for (var i=0; i<this.cols; i++) {
-                    for (var j=0; j<this.rows; j++) {
-                        var row = [];
-                        for (var j1=0; j1<y.cols; j1++) {
-                            row.push(this.mat[j][i] * y.mat[i][j1]);
+
+                for (var i=0; i<this.rows; i++) {
+                    var cols = [];
+                    for (var j=0;j<y.cols; j++) {
+                        var col = [];
+                        for (var k=0; k<y.rows; k++) {
+                            col.push(y.mat[k][j]);
                         }
-                        z.mat.push(row);
+                        cols.push(col);
                     }
+
+                    var row = [];
+                    for (var j=0; j<cols.length; j++) {
+                        var sum = 0;
+                        for (var k=0; k<cols[j].length; k++) {
+                            sum += this.mat[i][k] * cols[j][k];
+                        }
+                        row.push(sum);
+                    }
+                    z.mat.push(row);
                 }
             }
         }
@@ -428,18 +495,25 @@ Tensor.prototype.add = function (y) {
 }
 
 Tensor.prototype.sub_ = function (y) {
-    var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-   
-    for (var i=0; i<z.rows; i++) {
-        var row = [];
-        for (var j=0; j<z.cols; j++) {
-            row.push(this.mat[i][j] - y.mat[i][j]);
+    if (this.rows == 0 && this.cols == 0) {
+        if (y.rows == 0 && y.cols == 0) {
+            this.mat -= y.mat;
         }
-        z.mat.push(row);
+    } else {
+        if (y.rows == 0 && y.cols == 0) {
+            for (var i=0; i<this.rows; i++) {
+                for (var j=0; j<this.cols; j++) {
+                    this.mat[i][j] -= y.mat;
+                }
+            }
+        } else {
+            for (var i=0; i<this.rows; i++) {
+                for (var j=0; j<this.cols; j++) {
+                    this.mat[i][j] -= y.mat[i][j];
+                }
+            }
+        }
     }
-    return z;
 }
 
 Tensor.prototype.minus = function () {
@@ -525,7 +599,7 @@ Tensor.prototype.derive = function(v) {
                 // }
                 // console.log(this.nodes[0].constant);
                 // console.log(this.nodes[1].constant);
-                return (l.mul(this.nodes[0])).add((r.mul(this.nodes[1])));
+                return (l.mul(this.nodes[1])).add((r.mul(this.nodes[0])));
 
                 case TRANSPOSE:
                 var l = this.nodes[0].derive();
@@ -597,59 +671,6 @@ Tensor.prototype.backward1 = function() {
         }
     }
     return vars;
-}
-
-Tensor.prototype.backward = function(vv) {
-    var v = vv;
-    if (arguments.length === 0) {
-        v = this;
-    }
-    switch (this.type) {
-        case 1:
-            switch(this.op) {
-                case ADD:
-
-                break;
-
-                case SUB:
-                var l = this.nodes[0].derive();
-                var r = this.nodes[1].derive();
-                this.nodes[0].backward(v.mul(l));
-                this.nodes[1].backward(v.mul(r));
-                break;
-
-                case MUL:
-                break;
-
-                case TRANSPOSE:
-                break;
-
-                case POW:
-                break;
-
-                case DIV:
-                var l = this.nodes[0].derive();
-                var r = this.nodes[1].derive();
-                this.nodes[0].backward(v.mul(l));
-                this.nodes[1].backward(v.mul(r));
-                break;
-            
-                case MINUS:
-                break;
-            }
-        break;
-
-        case 2:
-        if (this.constant) {
-            return 0;
-        } else {
-            return 1;
-        }
-        break;
-
-        case 3:
-        break;
-    }
 }
 
 class torch {
