@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var layer1 = nn.Linear(20, 20);
+            var x = torch.tensor(1, 20);
+            var a = layer1(x);
+            console.log(a);
+
+            var m = nn.Sequentail(
+                nn.Linear(20, 20),
+                nn.RELU(),
+            )
+        </script>
+</body>
+</html>

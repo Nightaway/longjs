@@ -7,6 +7,7 @@ const POW = 4;
 const SUB = 5;
 const DIV = 6;
 const MINUS = 7;
+const MAX = 8;
 
 function Function(head) {
     this.head = head;
@@ -116,6 +117,20 @@ function Tensor() {
             }
         }
     }
+}
+
+Tensor.prototype.max = function(x) {
+    let l = torch.tensor(0);
+    let r = torch.tensor(x);
+
+    let z = torch.tensor();
+    z.nodes.push(l);
+    z.nodes[0].parent = this;
+    z.nodes.push(r);
+    z.nodes[1].parent = this;
+    z.type = 1;
+    z.op = MAX;
+    return z;
 }
 
 Tensor.prototype.transpose = function () {
@@ -686,5 +701,40 @@ class torch {
     
     static function(head) {
         return new Function(head);
+    }
+}
+
+class F {
+    static sigmoid(x) {
+        return torch.function(torch.const(1).div(torch.const(1).add(torch.const(Math.E).pow(torch.tensor(x).minus()))));
+    }
+
+    static relu(x) {
+        return torch.function(torch.max(x));
+    }
+
+    static softmax(x) {
+        let sum = torch.tensor();
+        for (let i=0; i<x.length; x++) {
+            sum.add(torch.const(Math.E).pow(torch.tensor(x[i])));
+        }
+    }
+}
+
+class nn {
+    static Linear(input_size, output_size) {
+        return function(x) {
+            let w = torch.tensor(input_size, output_size);
+            let b = torch.tensor();
+            return torch.function(x.mul(w).add(b));
+        }
+    }
+
+    static ReLU() {
+
+    }
+
+    static Sequentail() {
+        
     }
 }
