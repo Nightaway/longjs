@@ -104,9 +104,11 @@ function Tensor() {
         this.rows = args[0];
         this.cols = args[1];
         for (var i=0; i<this.rows; i++) {
+            let row = [];
             for (var j=0; j<this.cols; j++) {
-                this.mat.push([0.00005]);
+                row.push(0.00005);
             }
+            this.mat.push(row);
         }
     } else if (args.length === 3) {
         this.rows = args[0];
@@ -119,11 +121,30 @@ function Tensor() {
     }
 }
 
-Tensor.prototype.max = function(x) {
+Tensor.prototype.max = function() {
     let l = torch.tensor(0);
-    let r = torch.tensor(x);
+    let r = torch.tensor(this);
 
     let z = torch.tensor();
+
+    if (typeof(this) === "number") {
+
+    } else {
+        if (this.rows === 0 && this.cols === 0) {
+
+        } else {
+            z.rows = this.rows;
+            z.cols = this.cols;
+            for (let i=0; i<this.rows; i++) {
+                let row = [];
+                for (let j=0; j<this.cols; j++) {
+                    row.push(Math.max(0, this.mat[i][j]));
+                }
+                z.mat.push(row);
+            }
+        }
+    }
+
     z.nodes.push(l);
     z.nodes[0].parent = this;
     z.nodes.push(r);
@@ -710,7 +731,7 @@ class F {
     }
 
     static relu(x) {
-        return torch.function(torch.max(x));
+        return torch.function(x.head.max());
     }
 
     static softmax(x) {
@@ -718,6 +739,21 @@ class F {
         for (let i=0; i<x.length; x++) {
             sum.add(torch.const(Math.E).pow(torch.tensor(x[i])));
         }
+    }
+}
+
+class module {
+    
+    constructor(func) {
+        this.func = func;
+    }
+
+    pred() {
+        return this.func();
+    }
+
+    parameters() {
+        
     }
 }
 
@@ -731,10 +767,34 @@ class nn {
     }
 
     static ReLU() {
+        return F.relu;
+    }
 
+    static Sigmoid() {
+        return F.sigmoid;
+    }
+
+    static MSELoss() {
+        return function(y_, y) {
+            return torch.function(torch.tensor(y_).sub(torch.tensor(y)));
+        }
     }
 
     static Sequentail() {
-        
+        let args = arguments;
+        let func = function(x) {
+            let last = null;
+            for (let i=0; i<args.length; i++) {
+                if (i == 0) {
+                    last = args[0](x);
+                } else {
+                    last = args[i](last);
+                }
+            }
+            this.x = 0;
+            return last;
+        }
+        let m = new module(func);
+        return m;
     }
 }
