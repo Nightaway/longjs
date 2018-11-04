@@ -12,9 +12,11 @@ const MAX = 8;
 function Function(head) {
     this.head = head;
     this.next = head.backward1();
+    this.nextFunc = null;
     this.grad = null;
     this.class = 'function';
     this.name = "";
+    this.parameters = [];
 }
 
 Function.prototype.backward = function () {
@@ -29,12 +31,6 @@ Function.prototype.backward = function () {
         } else {
             grad = this.head.mul(d);
         }
-        // console.log(this.name);
-        // console.log(this.head);
-        // console.log(arguments[0]);
-        // console.log(d);
-        // console.log(this.next[i].name);
-        // console.log(grad);
         this.next[i].grad = grad;
         if (this.next[i].func !== null) {
             this.next[i].func.backward(grad);
@@ -590,32 +586,24 @@ Tensor.prototype.derive = function(v) {
                 case ADD:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                // console.log(l);
-                // console.log(r);
                 if (typeof l === "number") {
                     l = torch.tensor(l);
                 }
                 if (typeof r === "number") {
                     r = torch.tensor(r);
                 }
-                // console.log(l.add(r));
                 return l.add(r);
 
                 case SUB:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
                 
-                // console.log(l);
-                // console.log(r);
                 if (typeof r === "number") {
                     r = torch.tensor(r);
                 }
                 if (typeof l === "number") {
                     l = torch.tensor(l);
                 }
-                // console.log(l);
-                // console.log(r);
-                // console.log(l.sub(r));
                 return l.sub(r);
 
                 case MUL:
@@ -627,14 +615,6 @@ Tensor.prototype.derive = function(v) {
                 if (typeof l === "number") {
                     l = torch.tensor(l);
                 }
-
-                // if (!this.nodes[0].constant) {
-                //     return this.nodes[1];
-                // } else {
-                //     return this.nodes[0];
-                // }
-                // console.log(this.nodes[0].constant);
-                // console.log(this.nodes[1].constant);
                 return (l.mul(this.nodes[1])).add((r.mul(this.nodes[0])));
 
                 case TRANSPOSE:
@@ -644,13 +624,11 @@ Tensor.prototype.derive = function(v) {
                 case POW:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                // console.log(l);
-                // console.log(r * Math.pow(this.nodes[0].mat, this.nodes[1].mat));
+
                 if (this.nodes[0].constant) {
                     if (this.nodes[1].rows == 0 && this.nodes[1].cols == 0) {
                         return r * Math.pow(this.nodes[0].mat, this.nodes[1].mat);
                     } else {
-                        // console.log(this.nodes[0].pow(this.nodes[1]).mul(r));
                         return this.nodes[0].pow(this.nodes[1]).mul(r);
                     }
                 }
@@ -659,28 +637,14 @@ Tensor.prototype.derive = function(v) {
                 case DIV:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                // console.log(r);
-                // console.log(this.nodes[0].mat);
-                // console.log((l * this.nodes[1].mat - this.nodes[0].mat * r));
                 if (this.nodes[1].rows == 0 && this.nodes[1].cols == 0) {
-                    // console.log((l * this.nodes[1].mat - this.nodes[0].mat * r) / Math.pow(this.nodes[1].mat, 2));
                     return (l * this.nodes[1].mat - this.nodes[0].mat* r.mat) / Math.pow(this.nodes[1].mat, 2);
                 } else {
-                    // var lhr = this.nodes[1].mul(l);
-                    // var rhr = this.nodes[0].mul(r);
-                    // var thrd = this.nodes[1].pow(2);
-                    // console.log('1111');
-                    // console.log(thrd);
-                    // console.log(rhr);
-                    // console.log(lhr.sub(rhr).div(thrd));
-                    // console.log((this.nodes[1].mul(l).sub(this.nodes[0].mul(r))).div(this.nodes[1].pow(2)));
                     return (this.nodes[1].mul(l).sub(this.nodes[0].mul(r))).div(this.nodes[1].pow(2));
                 }
             
                 case MINUS:
                 var l = this.nodes[0].derive();
-                // console.log(this.nodes);
-                // console.log(r);
                 return -1;
             }
         break;
@@ -743,17 +707,18 @@ class F {
 }
 
 class module {
-    
     constructor(func) {
         this.func = func;
     }
 
-    pred() {
-        return this.func();
+    pred(x) {
+        let func = this.func(x)
+        this.parameters_ = func.nextFunc.parameters_;
+        return func;
     }
 
     parameters() {
-        
+        return this.parameters_;
     }
 }
 
@@ -762,7 +727,10 @@ class nn {
         return function(x) {
             let w = torch.tensor(input_size, output_size);
             let b = torch.tensor();
-            return torch.function(x.mul(w).add(b));
+            let func = torch.function(x.mul(w).add(b));
+            func.parameters.push(w);
+            func.parameters.push(b);
+            return func;
         }
     }
 
@@ -788,10 +756,11 @@ class nn {
                 if (i == 0) {
                     last = args[0](x);
                 } else {
-                    last = args[i](last);
+                    let newone  = args[i](last);
+                    newone.nextFunc = last;
+                    last = newone;
                 }
             }
-            this.x = 0;
             return last;
         }
         let m = new module(func);
