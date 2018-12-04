@@ -8,6 +8,7 @@
 <body style="height: 100%; margin: 0">
         <div id="container" style="height: 100%"></div>
         <script type="text/javascript">
+            var lr = torch.tensor(0.001);
             var x = torch.tensor(1, 20);
             var model = nn.Sequentail(
                 nn.Linear(20, 20),
@@ -20,7 +21,12 @@
             var lossfunc = nn.MSELoss();
             var loss = lossfunc(y_, y)
             loss.backward();
-            console.log(model.parameters());
+            console.log(loss);
+
+            console.log(model.parameters);
+            // for (var i=0; i<model.parameters.length; i++) {
+            //     model.parameters[i] = model.parameters[i].add(lr.mul(model.parameters[i].grad));
+            // }
         </script>
 </body>
 </html>

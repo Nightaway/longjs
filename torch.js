@@ -11,8 +11,8 @@ const MAX = 8;
 
 function Function(head) {
     this.head = head;
-    this.next = head.backward1();
-    this.nextFunc = null;
+    this.vars = head.backward1();
+    // this.nextFunc = null;
     this.grad = null;
     this.class = 'function';
     this.name = "";
@@ -20,8 +20,8 @@ function Function(head) {
 }
 
 Function.prototype.backward = function () {
-    for (var i=0; i<this.next.length; i++) {
-        this.choose(this.next[i]);
+    for (var i=0; i<this.vars.length; i++) {
+        this.choose(this.vars[i]);
         var d = this.head.derive();
         this.unchoose();
  
@@ -31,24 +31,24 @@ Function.prototype.backward = function () {
         } else {
             grad = this.head.mul(d);
         }
-        this.next[i].grad = grad;
-        if (this.next[i].func !== null) {
-            this.next[i].func.backward(grad);
+        this.vars[i].grad = grad;
+        if (this.vars[i].func !== null) {
+            this.vars[i].func.backward(grad);
         }
     }
 }
 
 Function.prototype.choose = function (v) {
-    for (var i=0; i<this.next.length; i++) {
-        if (this.next[i] !== v) {
-            this.next[i].constant = true;
+    for (var i=0; i<this.vars.length; i++) {
+        if (this.vars[i] !== v) {
+            this.vars[i].constant = true;
         }
     }
 }
 
 Function.prototype.unchoose = function () {
-    for (var i=0; i<this.next.length; i++) {
-        this.next[i].constant = false;
+    for (var i=0; i<this.vars.length; i++) {
+        this.vars[i].constant = false;
     }
 }
 
@@ -65,11 +65,12 @@ function Tensor() {
     this.nodes = [];
     this.type = 2;
     this.op = 0;
-    this.parent = null;
+    // this.parent = null;
     this.constant = false;
     this.class = 'tensor';
     this.func = null;
     this.name = "";
+    this.require_grad = false;
     
     if (args.length === 1) {
         if (Array.isArray(args[0])) {
@@ -85,7 +86,7 @@ function Tensor() {
                 this.nodes = args[0].nodes;
                 this.type = args[0].type;
                 this.op = args[0].op;
-                this.parent = args[0].parent;
+                // this.parent = args[0].parent;
                 this.constant = args[0].constant;
             } else if (args[0].class == "function") {
                 this.rows = args[0].head.rows;
@@ -120,7 +121,6 @@ function Tensor() {
 Tensor.prototype.max = function() {
     let l = torch.tensor(0);
     let r = torch.tensor(this);
-
     let z = torch.tensor();
 
     if (typeof(this) === "number") {
@@ -142,9 +142,9 @@ Tensor.prototype.max = function() {
     }
 
     z.nodes.push(l);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(r);
-    z.nodes[1].parent = this;
+    // z.nodes[1].parent = this;
     z.type = 1;
     z.op = MAX;
     return z;
@@ -168,7 +168,7 @@ Tensor.prototype.transpose = function () {
     z.cols = temp;
     
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.type = 1;
     z.op = TRANSPOSE;
     return z;
@@ -298,11 +298,11 @@ Tensor.prototype.mul = function (y) {
         }
     }
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    if (typeof y !== "number") {
-        z.nodes[1].parent = this;
-    }
+    // if (typeof y !== "number") {
+    //     z.nodes[1].parent = this;
+    // }
     z.type = 1;
     z.op = MUL;
     return z;
@@ -348,11 +348,11 @@ Tensor.prototype.sub = function (y) {
     }
 
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    if (typeof y !== "number") {
-        z.nodes[1].parent = this;
-    }
+    // if (typeof y !== "number") {
+    //     z.nodes[1].parent = this;
+    // }
     z.type = 1;
     z.op = SUB;
     return z;
@@ -386,9 +386,9 @@ Tensor.prototype.div = function (y) {
     }
     
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    z.nodes[1].parent = this;
+    // z.nodes[1].parent = this;
     z.type = 1;
     z.op = DIV;
     return z;
@@ -426,11 +426,11 @@ Tensor.prototype.pow = function (y) {
     }
 
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    if (typeof y !== "number") {
-        z.nodes[1].parent = this;
-    }
+    // if (typeof y !== "number") {
+    //     z.nodes[1].parent = this;
+    // }
     z.type = 1;
     z.op = POW;
     return z;
@@ -516,11 +516,11 @@ Tensor.prototype.add = function (y) {
     }
 
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    if (typeof y !== "number") {
-        z.nodes[1].parent = this;
-    }
+    // if (typeof y !== "number") {
+    //     z.nodes[1].parent = this;
+    // }
     z.type = 1;
     z.op = ADD;
     return z;
@@ -566,7 +566,7 @@ Tensor.prototype.minus = function () {
     }
 
     z.nodes.push(this);
-    z.nodes[0].parent = this;
+    // z.nodes[0].parent = this;
     z.type = 1;
     z.op = MINUS;
     return z;
@@ -667,7 +667,7 @@ Tensor.prototype.backward1 = function() {
         }
         let next = this.nodes[i].backward1();
         if (next.length > 0) {
-            vars = vars.concat(next);
+            vars = next.concat(vars);
         }
     }
     return vars;
@@ -709,16 +709,15 @@ class F {
 class module {
     constructor(func) {
         this.func = func;
+        this.parameters = [];
     }
 
     pred(x) {
-        let func = this.func(x)
-        this.parameters_ = func.nextFunc.parameters_;
-        return func;
-    }
-
-    parameters() {
-        return this.parameters_;
+        let result = this.func(x);
+        for (let i=0; i<result.parameters.length; i++) {
+            this.parameters = this.parameters.concat(result.parameters[i]);
+        }
+        return result.result;
     }
 }
 
@@ -726,7 +725,9 @@ class nn {
     static Linear(input_size, output_size) {
         return function(x) {
             let w = torch.tensor(input_size, output_size);
+            // w.require_grad = true;
             let b = torch.tensor();
+            // b.require_grad = true;
             let func = torch.function(x.mul(w).add(b));
             func.parameters.push(w);
             func.parameters.push(b);
@@ -752,18 +753,18 @@ class nn {
         let args = arguments;
         let func = function(x) {
             let last = null;
+            let parameters = [];
             for (let i=0; i<args.length; i++) {
-                if (i == 0) {
+                if (i === 0) {
                     last = args[0](x);
+                    parameters.push(last.parameters);
                 } else {
-                    let newone  = args[i](last);
-                    newone.nextFunc = last;
-                    last = newone;
+                    last = args[i](last);
+                    parameters.push(last.parameters);
                 }
             }
-            return last;
+            return {"result":last, "parameters": parameters};
         }
-        let m = new module(func);
-        return m;
+        return new module(func);
     }
 }
