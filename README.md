@@ -1,2 +1,2 @@
 # longjs
-Neural Network for Browser and nodejs
+Neural Network for Browser and Nodejs
