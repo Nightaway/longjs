@@ -142,10 +142,11 @@ Tensor.prototype.max = function() {
 
     z.nodes.push(l);
     // z.nodes[0].parent = this;
-    z.nodes.push(r);
+    z.nodes.push(this);
     // z.nodes[1].parent = this;
     z.type = 1;
     z.op = MAX;
+    // console.log(this);
     return z;
 }
 
@@ -259,6 +260,7 @@ Tensor.prototype.mul = function (y) {
                 }
             }
         } else {
+            // console.log(y);
             if (y.cols == 0 && y.rows == 0) {
                 z.rows = this.rows;
                 z.cols = this.cols;
@@ -645,6 +647,11 @@ Tensor.prototype.derive = function(v) {
                 case MINUS:
                 var l = this.nodes[0].derive();
                 return -1;
+
+                case MAX:
+                var l = this.nodes[0].derive();
+                var r = this.nodes[1].derive();
+                return r;
             }
         break;
 
@@ -694,7 +701,13 @@ class F {
     }
 
     static relu(x) {
-        return torch.function(x.head.max());
+        console.log("max");
+        // console.log(torch.function(torch.tensor(x).max()));
+        console.log(torch.tensor(x).max());
+        console.log("max");
+        return torch.function(torch.tensor(x).max());
+        // return torch.tensor(x);
+        // return torch.tensor(x).max();
     }
 
     static softmax(x) {

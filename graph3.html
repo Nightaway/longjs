@@ -12,6 +12,7 @@
             var x = torch.tensor(1, 20);
             var model = nn.Sequentail(
                 nn.Linear(20, 128),
+                nn.ReLU(),
                 nn.Linear(128, 1),
                 nn.Sigmoid()
             );
@@ -19,6 +20,7 @@
             console.log(y_);
             var y = torch.tensor(1, 20);
             console.log(y);
+
             var lossfunc = nn.MSELoss();
             var loss = lossfunc(y_, y)
             loss.backward();
