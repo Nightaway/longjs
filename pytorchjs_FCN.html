@@ -36,9 +36,9 @@
             );
             var lossfc = nn.MSELoss();
             var lr = torch.tensor(0.000001);
-            for (var j=0; j<5; j++) {
+            for (var j=0; j<10; j++) {
                 // var j = 0;
-                for (var i=0; i<10000; i++) {
+                for (var i=0; i<images.length; i++) {
                     if (labels[0] == 0) {
                         var x = torch.tensor(images[i]);
                         // console.log(x);
@@ -64,8 +64,8 @@
                             }
                         }
             
-                        if (i%500 == 0) {
-                            console.log("" + i +": " + loss.head.mat[0][0])
+                        if (i%1000 == 0) {
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][0])
                         }
@@ -91,8 +91,8 @@
                             }
                         }
                         // console.log(model.parameters);
-                        if (i%500 == 0) {
-                            console.log("" + i +": " + loss.head.mat[0][0])
+                        if (i%1000 == 0) {
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][0])
                         }
