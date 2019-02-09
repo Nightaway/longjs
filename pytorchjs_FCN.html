@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var dom = document.getElementById("container");
+            var myChart = echarts.init(dom);
+            var app = {};
+            option = null;
+            option = {
+                xAxis: {
+                    type: 'category',
+                    data: []
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [{
+                    data: [],
+                    type: 'line'
+                }]
+            };
+            ;
+
+            var model = nn.Sequentail(
+                nn.Linear(784, 1),
+                // nn.ReLU(),
+                // nn.Linear(128, 1),
+                nn.Sigmoid()
+            );
+            var lossfc = nn.MSELoss();
+            var lr = torch.tensor(0.000001);
+            for (var j=0; j<5; j++) {
+                // var j = 0;
+                for (var i=0; i<10000; i++) {
+                    if (labels[0] == 0) {
+                        var x = torch.tensor(images[i]);
+                        // console.log(x);
+                        var y_ = model.pred(x);
+                        // console.log(labels[i]);
+                        // console.log(y_);
+                        var y = torch.tensor(0);
+                        // console.log(y);
+                        var loss = lossfc(y_, y);
+                        // console.log("loss:");
+                        // console.log(loss);
+                        loss.backward();
+
+                        // console.log(model.parameters);
+
+                        for (var z=0; z<model.parameters.length; z++) {
+                            // console.log(lr.mul(model.parameters[z].grad));
+                            var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad));
+                            for (var r=0; r<model.parameters[z].rows; r++) {
+                                for (var c=0; c<model.parameters[z].cols; c++) {
+                                    model.parameters[z].mat[r][c] = newTensor.mat[r][c];
+                                }
+                            }
+                        }
+            
+                        if (i%500 == 0) {
+                            console.log("" + i +": " + loss.head.mat[0][0])
+                            option.xAxis.data.push((j*1000)+i)
+                            option.series[0].data.push(loss.head.mat[0][0])
+                        }
+                    } 
+                    else if (labels[i] == 1) {
+                        var x = torch.tensor(images[i]);
+                        // console.log(x);
+                        var y_ = model.pred(x);
+                        // console.log(labels[i]);
+                        // console.log(y_);
+                        var y = torch.tensor(1);
+                        var loss = lossfc(y_, y);
+                        // console.log(loss);
+                        loss.backward();
+
+                        for (var z=0; z<model.parameters.length; z++) {
+                            // console.log(lr.mul(model.parameters[z].grad));
+                            var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad));
+                            for (var r=0; r<model.parameters[z].rows; r++) {
+                                for (var c=0; c<model.parameters[z].cols; c++) {
+                                    model.parameters[z].mat[r][c] = newTensor.mat[r][c];
+                                }
+                            }
+                        }
+                        // console.log(model.parameters);
+                        if (i%500 == 0) {
+                            console.log("" + i +": " + loss.head.mat[0][0])
+                            option.xAxis.data.push((j*1000)+i)
+                            option.series[0].data.push(loss.head.mat[0][0])
+                        }
+                    }
+                }
+            }
+            if (option && typeof option === "object") {
+                myChart.setOption(option, true);
+            }
+        </script>
+</body>
+</html>

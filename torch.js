@@ -30,6 +30,7 @@ Function.prototype.backward = function () {
         } else {
             grad = this.head.mul(d);
         }
+        // console.log(grad);
         this.vars[i].grad = grad.transpose();
         if (this.vars[i].func !== null) {
             this.vars[i].func.backward(grad);
@@ -37,7 +38,7 @@ Function.prototype.backward = function () {
     }
 }
 
-Function.prototype.choose = function (v) {
+Function.prototype.choose = function(v) {
     for (var i=0; i<this.vars.length; i++) {
         if (this.vars[i] !== v) {
             this.vars[i].constant = true;
@@ -316,6 +317,10 @@ Tensor.prototype.sub = function (y) {
     if (y.rows == 0 && y.cols == 0) {  
         if (this.rows == 0 && this.cols == 0) {
             z.mat = this.mat - y.mat;
+        } else if (this.rows == 1 && this.cols == 1) {
+            z.rows = 1;
+            z.cols = 1;
+            z.mat.push([this.mat[0][0] - y.mat]);
         } else {
             z.rows = this.rows;
             z.cols = this.cols;
@@ -330,14 +335,25 @@ Tensor.prototype.sub = function (y) {
         
     } else {
         if (this.rows == 0 && this.cols == 0) {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat - y.mat[i][j]);
+            if (y.rows == 1 && y.cols == 1) {
+                z.mat.push(this.mat - y.mat[0][0]);
+            } else {
+                for (var i=0; i<z.rows; i++) {
+                    var row = [];
+                    for (var j=0; j<z.cols; j++) {
+                        row.push(this.mat - y.mat[i][j]);
+                    }
+                    z.mat.push(row);
                 }
-                z.mat.push(row);
             }
-        } else {
+        } else if (this.rows == 1 && this.cols == 1) {
+            if (y.rows == 0 && y.cols == 0) {
+                z.mat = this.mat[0][0] - y.mat;
+            } else if (y.rows == 1 && y.cols == 1) {
+                z.mat.push([this.mat[0][0] - y.mat[0][0]]);
+            }
+        } 
+        else {
             for (var i=0; i<z.rows; i++) {
                 var row = [];
                 for (var j=0; j<z.cols; j++) {
@@ -363,7 +379,8 @@ Tensor.prototype.div = function (y) {
     var z = torch.tensor();
     z.rows = y.rows;
     z.cols = y.cols;
-
+    // console.log(this);
+    // console.log(y);
     if (this.rows == 0 && this.cols == 0) {
         if (y.rows == 0 && y.cols == 0) {
             z.mat = this.mat / y.mat;
@@ -598,7 +615,9 @@ Tensor.prototype.derive = function(v) {
                 case SUB:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                
+                // console.log('sub');
+                // console.log(l);
+                // console.log(r);
                 if (typeof r === "number") {
                     r = torch.tensor(r);
                 }
@@ -701,13 +720,7 @@ class F {
     }
 
     static relu(x) {
-        console.log("max");
-        // console.log(torch.function(torch.tensor(x).max()));
-        console.log(torch.tensor(x).max());
-        console.log("max");
         return torch.function(torch.tensor(x).max());
-        // return torch.tensor(x);
-        // return torch.tensor(x).max();
     }
 
     static softmax(x) {
@@ -725,24 +738,32 @@ class module {
     }
 
     pred(x) {
-        let result = this.func(x);
-        for (let i=0; i<result.parameters.length; i++) {
-            this.parameters = this.parameters.concat(result.parameters[i]);
-        }
+        // this.parameters = [];
+        // let result = this.func(x);
+        // for (let i=0; i<result.parameters.length; i++) {
+        //     this.parameters = this.parameters.concat(result.parameters[i]);
+        // }
+        // return result.result;
+        let result = this.func(x)
+        this.parameters = result.parameters;
         return result.result;
     }
 }
 
 class nn {
     static Linear(input_size, output_size) {
-        return function(x) {
-            let w = torch.tensor(input_size, output_size);
+        return function(x, parameters) {
+            if (parameters.length < 2) {
+                parameters.push(torch.tensor(input_size, output_size));
+                parameters.push(torch.tensor(1, output_size));
+            }
+            // let w = torch.tensor(input_size, output_size);
             // w.require_grad = true;
-            let b = torch.tensor(0);
+            // let b = torch.tensor(1, output_size);
             // b.require_grad = true;
-            let func = torch.function(torch.tensor(x).mul(w).add(b));
-            func.parameters.push(w);
-            func.parameters.push(b);
+            let func = torch.function(torch.tensor(x).mul(parameters[0]).add(parameters[1]));
+            // func.parameters.push(w);
+            // func.parameters.push(b);
             return func;
         }
     }
@@ -763,16 +784,16 @@ class nn {
 
     static Sequentail() {
         let args = arguments;
+        let parameters = [];
         let func = function(x) {
             let last = null;
-            let parameters = [];
             for (let i=0; i<args.length; i++) {
                 if (i === 0) {
-                    last = args[0](x);
-                    parameters.push(last.parameters);
+                    last = args[0](x, parameters);
+                    // parameters.push(last.parameters);
                 } else {
-                    last = args[i](last);
-                    parameters.push(last.parameters);
+                    last = args[i](last, parameters);
+                    // parameters.push(last.parameters);
                 }
             }
             return {"result":last, "parameters": parameters};

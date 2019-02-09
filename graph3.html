@@ -8,28 +8,38 @@
 <body style="height: 100%; margin: 0">
         <div id="container" style="height: 100%"></div>
         <script type="text/javascript">
-            var lr = torch.tensor(0.001);
-            var x = torch.tensor(1, 20);
-            var model = nn.Sequentail(
-                nn.Linear(20, 128),
-                nn.ReLU(),
-                nn.Linear(128, 1),
-                nn.Sigmoid()
-            );
-            var y_ = model.pred(x);
-            console.log(y_);
-            var y = torch.tensor(1);
-            console.log(y);
+            // var lr = torch.tensor(0.001);
+            // var x = torch.tensor(1, 20);
+            // var model = nn.Sequentail(
+            //     nn.Linear(20, 128),
+            //     nn.ReLU(),
+            //     nn.Linear(128, 1),
+            //     nn.Sigmoid()
+            // );
+            // var y_ = model.pred(x);
+            // console.log(y_);
+            // var y = torch.tensor(1);
+            // console.log(y);
 
-            var lossfunc = nn.MSELoss();
-            var loss = lossfunc(y_, y)
+            // var y_ = torch.function(torch.tensor(3).mul(torch.const(4)));
+            // var y = torch.const(2);
+            // var lossfunc = nn.MSELoss();
+            // var loss = lossfunc(y_, y)
+            // loss.backward();
+            // console.log(loss);
+
+            var y_ = torch.tensor(3);
+            var y = torch.tensor(-2);
+            // var lossfunc = nn.MSELoss();
+            // var loss = lossfunc(y_, y)
+            var loss = torch.function(y_.add(y));
             loss.backward();
             console.log(loss);
 
-            console.log(model.parameters);
-            for (var i=0; i<model.parameters.length; i++) {
-                model.parameters[i] = model.parameters[i].add(lr.mul(model.parameters[i].grad));
-            }
+            // console.log(model.parameters);
+            // for (var i=0; i<model.parameters.length; i++) {
+            //     model.parameters[i] = model.parameters[i].sub(lr.mul(model.parameters[i].grad));
+            // }
         </script>
 </body>
 </html>
