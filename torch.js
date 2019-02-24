@@ -1,39 +1,59 @@
 "use strict";
 
-const ADD = 1;
-const MUL = 2;
-const TRANSPOSE = 3;
-const POW = 4;
-const SUB = 5;
-const DIV = 6;
-const MINUS = 7;
-const MAX = 8;
+const ADD = 'add';
+const MUL = 'mul';
+const TRANSPOSE = 'transpose';
+const POW = 'pow';
+const SUB = 'sub';
+const DIV = 'div';
+const MINUS = 'minus';
+const MAX = 'max';
+const REDUCE_SUM = 'reduce_sum';
 
-function Function(head) {
+function Function(head, name) {
     this.head = head;
     this.vars = head.findAllVaribles();
     this.grad = null;
     this.class = 'function';
-    this.name = "";
-    this.parameters = [];
+    this.name = name;
 }
 
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
         this.choose(this.vars[i]);
-        var d = this.head.derive();
+        var d = this.head.derive(arguments[0]);
         this.unchoose();
  
-        var grad = null;
-        if (arguments.length === 1) {
-            grad = arguments[0].mul(d);
+        var grad = d;
+        if (d.isgrad == false) {
+            if (arguments.length === 1) {
+                // console.log(1);
+                // console.log(this.name);
+                // console.log(arguments[0]);
+                // console.log(d);
+                grad = arguments[0].mul(d);
+                // console.log(grad);
+            } else {
+                // console.log(2);
+                // console.log(this.name);
+                // console.log(this.head);
+                // console.log(d);
+                grad = this.head.mul(d);
+                // console.log(grad);
+            }
         } else {
-            grad = this.head.mul(d);
+            grad = d.transpose();
+            // console.log(3);
+            // console.log(this.name);
+            // console.log(grad);
         }
-        // console.log(grad);
-        this.vars[i].grad = grad.transpose();
+
+        this.vars[i].grad = grad;
+        // console.log(3);
+        // console.log(this.name);
+        // console.log(this.vars[i]);
         if (this.vars[i].func !== null) {
-            this.vars[i].func.backward(grad);
+            this.vars[i].func.backward(this.vars[i].grad);
         }
     }
 }
@@ -65,14 +85,14 @@ function Tensor() {
     this.nodes = [];
     this.type = 2;
     this.op = 0;
-    // this.parent = null;
+    this.isgrad = false;
     this.constant = false;
     this.class = 'tensor';
     this.func = null;
     this.name = "";
     this.require_grad = false;
     
-    if (args.length === 1) {
+   if (args.length === 1) {
         if (Array.isArray(args[0])) {
             this.rows = args.length;
             this.cols = args[0].length;
@@ -151,6 +171,27 @@ Tensor.prototype.max = function() {
     return z;
 }
 
+Tensor.prototype.reduce_sum = function () {
+    var z = torch.const();
+    z.rows = 1;
+    z.cols = 1;
+    var sum = 0;
+    for (var i=0; i<this.rows; i++) {
+        for (var j=0; j<this.cols; j++) {
+            sum += this.mat[i][j];
+        }
+    }
+    var v = torch.const();
+    v.rows = this.rows;
+    v.cols = this.cols;
+    v.mat = this.mat;
+    z.nodes.push(v);
+    z.mat.push([sum]);
+    z.type = 1;
+    z.op = REDUCE_SUM;
+    return z;
+}
+
 Tensor.prototype.transpose = function () {
     if (this.rows == 0 && this.cols == 0) {
         return this;
@@ -191,16 +232,32 @@ Tensor.prototype.transpose_ = function () {
     var temp = this.rows;
     z.rows = this.cols;
     z.cols = temp;
+    return z;
+}
 
+Tensor.prototype.multiply = function (y) {
+    var z = torch.tensor();
+    z.rows = this.rows;
+    z.cols = this.cols;
+    for (var i=0; i<this.rows; i++) {
+        var row = [];
+        for (var j=0;j<this.cols; j++) {
+            row.push(this.mat[i][j]*y.mat[i][j]);
+        }
+        z.mat.push(row);
+    }
     return z;
 }
 
 Tensor.prototype.mul = function (y) {
+    if (this.rows == y.rows && this.cols == y.cols) {
+        return this.multiply(y);
+    }
+
     var z = torch.tensor();
     if (typeof y == "number") {
         z.rows = this.rows;
         z.cols = this.cols;
-
         if (this.rows == 0 && this.cols == 0) {
             for (var i=0; i<this.rows; i++) {
                 var row = [];
@@ -261,7 +318,6 @@ Tensor.prototype.mul = function (y) {
                 }
             }
         } else {
-            // console.log(y);
             if (y.cols == 0 && y.rows == 0) {
                 z.rows = this.rows;
                 z.cols = this.cols;
@@ -336,7 +392,9 @@ Tensor.prototype.sub = function (y) {
     } else {
         if (this.rows == 0 && this.cols == 0) {
             if (y.rows == 1 && y.cols == 1) {
-                z.mat.push(this.mat - y.mat[0][0]);
+                var row = [];
+                row.push(this.mat - y.mat[0][0]);
+                z.mat.push(row);
             } else {
                 for (var i=0; i<z.rows; i++) {
                     var row = [];
@@ -394,12 +452,34 @@ Tensor.prototype.div = function (y) {
             }
         }
     } else {
-        for (var i=0; i<z.rows; i++) {
-            var row = [];
-            for (var j=0; j<z.cols; j++) {
-                row.push(this.mat[i][j] / y.mat[i][j]);
+        if (y.rows == 1 && y.cols == 1) {
+            z.rows = this.rows;
+            z.cols = this.cols;
+            for (var i=0; i<z.rows; i++) {
+                var row = [];
+                for (var j=0; j<z.cols; j++) {
+                    row.push(this.mat[i][j] / y.mat[0][0]);
+                }
+                z.mat.push(row);
             }
-            z.mat.push(row);
+        } else if (y.rows == 0 && y.cols == 0) {
+            z.rows = this.rows;
+            z.cols = this.cols;
+            for (var i=0; i<z.rows; i++) {
+                var row = [];
+                for (var j=0; j<z.cols; j++) {
+                    row.push(this.mat[i][j] / y.mat);
+                }
+                z.mat.push(row);
+            }
+        } else {
+            for (var i=0; i<z.rows; i++) {
+                var row = [];
+                for (var j=0; j<z.cols; j++) {
+                    row.push(this.mat[i][j] / y.mat[i][j]);
+                }
+                z.mat.push(row);
+            }
         }
     }
     
@@ -657,6 +737,36 @@ Tensor.prototype.derive = function(v) {
                 case DIV:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
+
+                if (this.nodes[0].rows === 1 && this.nodes[0].cols > 1) {
+                    // console.log("=========== in ============s");
+                    var d_x = (this.nodes[1].mul(l).sub(this.nodes[0].mul(r))).div(this.nodes[1].pow(2));
+                    var grad = v.mul(d_x);
+                    // console.log(v.mul(d_x));
+                    for (var i=0; i<this.nodes[0].cols; i++) {
+                        var d_sum = this.nodes[0].mat[0][i];
+                        // console.log(d_sum);
+                        var d_x_i = this.nodes[0].mul(torch.const(d_sum)).div(this.nodes[1].pow(2)).minus();
+                        // console.log(d_x_i.mat);
+                        // console.log(v.mul(d_x_i));
+                        let grad_ = v.mul(d_x_i);
+                        for (var j=0; j<this.nodes[0].cols; j++) {
+                            if (i !== j)
+                                grad.mat[0][i] += grad_.mat[0][j];
+                        }
+                    }
+                    // console.log(grad);
+                    grad.isgrad = true;
+                    return grad;
+                }
+                // console.log("div");
+                // console.log(this.nodes[0]);
+                // console.log(this.nodes[1]);
+                // console.log(l);
+                // console.log(r);
+                // console.log('---');
+                // console.log(this.nodes[1].mul(l));
+                // console.log(this.nodes[0].mul(r));
                 if (this.nodes[1].rows == 0 && this.nodes[1].cols == 0) {
                     return (l * this.nodes[1].mat - this.nodes[0].mat* r.mat) / Math.pow(this.nodes[1].mat, 2);
                 } else {
@@ -667,10 +777,28 @@ Tensor.prototype.derive = function(v) {
                 var l = this.nodes[0].derive();
                 return -1;
 
-                case MAX:
-                var l = this.nodes[0].derive();
-                var r = this.nodes[1].derive();
+                case REDUCE_SUM:
+                console.log("reduce");
+                console.log(r);
+                var r = this.nodes[0].derive();
+                // var z = torch.tensor();
+                // z.rows = r.rows;
+                // z.cols = r.cols;
+                // for (var i=0; i<r.rows; i++) {
+                //     var row = [];
+                //     for (var j=0; j<r.cols; j++) {
+                //         row.push(r);
+                //     }
+                //     z.mat.push(row);
+                // }
                 return r;
+
+                case MAX:
+                var l = this.nodes[0];
+                var r = this.nodes[1];
+                // console.log(l);
+                // console.log(r);
+                return 1;
             }
         break;
 
@@ -708,9 +836,13 @@ class torch {
         tensor.constant = true;
 		return tensor;
     }
+
+    static variable() {
+        return new Tensor(arguments);
+    }
     
-    static function(head) {
-        return new Function(head);
+    static function(head, name) {
+        return new Function(head, name);
     }
 }
 
@@ -720,65 +852,77 @@ class F {
     }
 
     static relu(x) {
-        return torch.function(torch.tensor(x).max());
+        let func  = torch.function(torch.tensor(x).max());
+        func.name = "relu";
+        return func;
     }
 
     static softmax(x) {
-        let sum = torch.tensor();
-        for (let i=0; i<x.length; x++) {
-            sum.add(torch.const(Math.E).pow(torch.tensor(x[i])));
-        }
+        let exp = torch.const(Math.E).pow(torch.tensor(x));
+        let sum = exp.reduce_sum();
+        let func = torch.function(exp.div(sum));
+        func.name = "softmax";
+        return func;
     }
-}
+}   
 
-class module {
+class Model {
     constructor(func) {
         this.func = func;
         this.parameters = [];
     }
 
     pred(x) {
-        // this.parameters = [];
-        // let result = this.func(x);
-        // for (let i=0; i<result.parameters.length; i++) {
-        //     this.parameters = this.parameters.concat(result.parameters[i]);
-        // }
-        // return result.result;
         let result = this.func(x)
         this.parameters = result.parameters;
         return result.result;
     }
 }
 
+class Layer {
+    constructor(func) {
+        this.allocte = false;
+        this.func = func;
+        this.class = "layer";
+        this.params_idx = [];
+    }
+}
+
 class nn {
     static Linear(input_size, output_size) {
-        return function(x, parameters) {
-            if (parameters.length < 2) {
+        return new Layer(function(x, parameters, idx) {
+            if (this.allocte == false) {
+                this.params_idx.push(parameters.length);
                 parameters.push(torch.tensor(input_size, output_size));
+                this.params_idx.push(parameters.length);
                 parameters.push(torch.tensor(1, output_size));
+                this.allocte = true;
             }
-            // let w = torch.tensor(input_size, output_size);
-            // w.require_grad = true;
-            // let b = torch.tensor(1, output_size);
-            // b.require_grad = true;
-            let func = torch.function(torch.tensor(x).mul(parameters[0]).add(parameters[1]));
-            // func.parameters.push(w);
-            // func.parameters.push(b);
+            let func = torch.function(torch.tensor(x).mul(parameters[this.params_idx[0]]).add(parameters[this.params_idx[1]]));
+            func.name = "linear";
             return func;
-        }
+        });
     }
 
     static ReLU() {
-        return F.relu;
+        return function(x, parameters, idx) {
+            return F.relu(x);
+        }
     }
 
     static Sigmoid() {
         return F.sigmoid;
     }
 
+    static Softmax() {
+        return F.softmax;
+    }
+
     static MSELoss() {
         return function(y_, y) {
-            return torch.function(torch.tensor(y_).sub(torch.tensor(y)));
+            let func = torch.function(torch.tensor(y_).sub(torch.const(y)));
+            func.name = "MSELoss";
+            return func;
         }
     }
 
@@ -786,18 +930,16 @@ class nn {
         let args = arguments;
         let parameters = [];
         let func = function(x) {
-            let last = null;
+            let last = x;
             for (let i=0; i<args.length; i++) {
-                if (i === 0) {
-                    last = args[0](x, parameters);
-                    // parameters.push(last.parameters);
+                if ('class' in args[i]) {
+                    last = args[i].func(last, parameters, i);
                 } else {
-                    last = args[i](last, parameters);
-                    // parameters.push(last.parameters);
+                    last = args[i](last, parameters, i);
                 }
             }
             return {"result":last, "parameters": parameters};
         }
-        return new module(func);
+        return new Model(func);
     }
 }

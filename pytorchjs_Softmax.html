@@ -28,33 +28,37 @@
             };
             ;
 
+            for (var c=0; c<images.length; c++) {
+                for (var n=0; n<images[c].length; n++) {
+                    images[c][n] = images[c][n] / 255;
+                }
+            }
+
             var model = nn.Sequentail(
-                nn.Linear(784, 128),
+                nn.Linear(784, 3),
                 // nn.ReLU(),
-                nn.Linear(128, 1),
-                nn.Sigmoid()
+                // nn.Linear(128, 3),
+                nn.Softmax()
             );
             var lossfc = nn.MSELoss();
             var lr = torch.const(0.001);
-            for (var j=0; j<1; j++) {
-                // var j = 0;
-                for (var i=0; i<100; i++) {
+            for (var j=0; j<100; j++) {
+                for (var i=0; i<1000; i++) {
                     if (labels[i] == 0) {
                         var x = torch.const(images[i]);
                         // console.log(x);
                         var y_ = model.pred(x);
                         // console.log(labels[i]);
                         // console.log(y_);
-                        var y = torch.const(0);
+                        var y = torch.const([1, 0, 0]);
                         // console.log(y);
                         var loss = lossfc(y_, y);
                         // console.log("loss:");
                         // console.log(loss);
                         loss.backward();
-                        // console.log(model.parameters);
 
-                        console.log('opz');
-                        // console.log(lr.mul(model.parameters[0].grad).transpose());
+                        // console.log('lable:' + labels[i]);
+                        // console.log(model.parameters);
                         for (var z=0; z<model.parameters.length; z++) {
                             var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
                             for (var r=0; r<model.parameters[z].rows; r++) {
@@ -64,23 +68,28 @@
                             }
                         }
             
-                        if (i%10 == 0) {
+                        if (i%500 == 0) {
                             console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][0])
                         }
                     } 
                     else if (labels[i] == 1) {
-                        var x = torch.tensor(images[i]);
+                        var x = torch.const(images[i]);
                         // console.log(x);
                         var y_ = model.pred(x);
                         // console.log(labels[i]);
                         // console.log(y_);
-                        var y = torch.tensor(1);
+                        var y = torch.const([0, 1, 0]);
+                        // console.log(y);
                         var loss = lossfc(y_, y);
+                        // console.log("loss:");
                         // console.log(loss);
                         loss.backward();
+                        // console.log(model.parameters);
 
+                        // console.log('lable:' + labels[i]);
+                        // console.log(model.parameters);
                         for (var z=0; z<model.parameters.length; z++) {
                             var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
                             for (var r=0; r<model.parameters[z].rows; r++) {
@@ -89,11 +98,41 @@
                                 }
                             }
                         }
-                        // console.log(model.parameters);
-                        if (i%10 == 0) {
-                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
+        
+                        if (i%500 == 0) {
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][1]);
                             option.xAxis.data.push((j*1000)+i)
-                            option.series[0].data.push(loss.head.mat[0][0])
+                            option.series[0].data.push(loss.head.mat[0][1])
+                        }
+                    } else if (labels[i] == 2) {
+                        var x = torch.const(images[i]);
+                        // console.log(x);
+                        var y_ = model.pred(x);
+                        // console.log(labels[i]);
+                        // console.log(y_);
+                        var y = torch.const([0, 0, 1]);
+                        // console.log(y);
+                        var loss = lossfc(y_, y);
+                        // console.log("loss:");
+                        // console.log(loss);
+                        loss.backward();
+                        // console.log(model.parameters);
+
+                        // console.log('lable:' + labels[i]);
+                        // console.log(model.parameters);
+                        for (var z=0; z<model.parameters.length; z++) {
+                            var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
+                            for (var r=0; r<model.parameters[z].rows; r++) {
+                                for (var c=0; c<model.parameters[z].cols; c++) {
+                                    model.parameters[z].mat[r][c] = newTensor.mat[r][c];
+                                }
+                            }
+                        }
+        
+                        if (i%500 == 0) {
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][2]);
+                            option.xAxis.data.push((j*1000)+i)
+                            option.series[0].data.push(loss.head.mat[0][2])
                         }
                     }
                 }
