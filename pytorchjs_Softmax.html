@@ -35,15 +35,16 @@
             }
 
             var model = nn.Sequentail(
-                nn.Linear(784, 3),
+                nn.Linear(784, 2048),
                 // nn.ReLU(),
-                // nn.Linear(128, 3),
+                // nn.Linear(4096, 2048),
+                nn.Linear(2048, 3),
                 nn.Softmax()
             );
             var lossfc = nn.MSELoss();
-            var lr = torch.const(0.001);
-            for (var j=0; j<100; j++) {
-                for (var i=0; i<1000; i++) {
+            var lr = torch.const(0.005);
+            for (var j=0; j<10; j++) {
+                for (var i=0; i<2000; i++) {
                     if (labels[i] == 0) {
                         var x = torch.const(images[i]);
                         // console.log(x);
@@ -68,7 +69,7 @@
                             }
                         }
             
-                        if (i%500 == 0) {
+                        if (i%100 == 0) {
                             console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][0])
@@ -99,7 +100,7 @@
                             }
                         }
         
-                        if (i%500 == 0) {
+                        if (i%100 == 0) {
                             console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][1]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][1])
@@ -129,7 +130,7 @@
                             }
                         }
         
-                        if (i%500 == 0) {
+                        if (i%100 == 0) {
                             console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][2]);
                             option.xAxis.data.push((j*1000)+i)
                             option.series[0].data.push(loss.head.mat[0][2])

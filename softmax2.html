@@ -19,17 +19,19 @@
             var lr = torch.tensor(0.001);
             var x = torch.const(1, 20);
             var model = nn.Sequentail(
-                nn.Linear(20, 3),
+                nn.Linear(20, 10),
+                nn.Linear(10, 3),
                 nn.Softmax(),
             );
             var y_ = model.pred(x);
             var y = torch.const([1, 0, 0]);
-            console.log(y_);
+            // console.log("y_");
+            // console.log(y_);
             // console.log(y);
             var loss = torch.function(torch.tensor(y_).sub(y), "loss");
-            console.log('loss_tensor');
-            console.log(loss.head.transpose());
-            loss.backward(loss.head.transpose());
+            // console.log('loss_tensor');
+            // console.log(loss.head.transpose());
+            loss.backward();
 
             console.log('grad');
             console.log(model.parameters);

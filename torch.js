@@ -29,6 +29,19 @@ Function.prototype.backward = function () {
             if (arguments.length === 1) {
                 // console.log(1);
                 // console.log(this.name);
+                
+                if (d.rows > 1 || d.cols > 1) {
+                    if (arguments[0].cols != d.rows) {
+                        d = d.transpose();
+                    }
+
+                    if (arguments[0].cols != d.rows) {
+                        arguments[0] = arguments[0].transpose();
+                        if (arguments[0].cols != d.rows) { 
+                            d = d.transpose();
+                        }
+                    }
+                }
                 // console.log(arguments[0]);
                 // console.log(d);
                 grad = arguments[0].mul(d);
@@ -37,21 +50,23 @@ Function.prototype.backward = function () {
                 // console.log(2);
                 // console.log(this.name);
                 // console.log(this.head);
+                if (d.rows > 1 || d.cols > 1) {
+                    if (this.head.cols != d.rows) {
+                        d = d.transpose();
+                    }
+                }
                 // console.log(d);
                 grad = this.head.mul(d);
                 // console.log(grad);
             }
         } else {
-            grad = d.transpose();
+            grad = d;
             // console.log(3);
             // console.log(this.name);
             // console.log(grad);
         }
 
         this.vars[i].grad = grad;
-        // console.log(3);
-        // console.log(this.name);
-        // console.log(this.vars[i]);
         if (this.vars[i].func !== null) {
             this.vars[i].func.backward(this.vars[i].grad);
         }
@@ -898,6 +913,7 @@ class nn {
                 parameters.push(torch.tensor(1, output_size));
                 this.allocte = true;
             }
+
             let func = torch.function(torch.tensor(x).mul(parameters[this.params_idx[0]]).add(parameters[this.params_idx[1]]));
             func.name = "linear";
             return func;
