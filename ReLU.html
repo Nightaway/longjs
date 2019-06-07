@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var x = torch.tensor([-1, 1, 2]);
+            console.log(x);
+            var y = nn.ReLU()(x);
+            console.log(y);
+        </script>
+</body>
+</html>
