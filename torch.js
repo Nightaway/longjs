@@ -7,7 +7,7 @@ const POW = 'pow';
 const SUB = 'sub';
 const DIV = 'div';
 const MINUS = 'minus';
-const MAX = 'max';
+const ReLU = 'ReLU';
 const REDUCE_SUM = 'reduce_sum';
 
 function Function(head, name) {
@@ -20,15 +20,38 @@ function Function(head, name) {
 
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
-        this.choose(this.vars[i]);
-        var d = this.head.derive(arguments[0]);
-        this.unchoose();
- 
+        if (this.name == "ReLU") {
+            console.log(4);
+            console.log(this.name);
+            var l = this.head;
+            console.log(l);
+
+            var grad = torch.tensor();
+            grad.rows = l.rows;
+            grad.cols = l.cols;
+            for (var row=0; row<l.rows; row++) {
+                var rowa = [];
+                for (var col=0; col<l.cols; col++) {
+                    if (l.mat[row][col] > 0) {
+                        rowa.push(1);
+                    }
+                }
+                grad.mat.push(rowa);
+            }
+            console.log(grad);
+            return ;
+        } else {
+            this.choose(this.vars[i]);
+            var d = this.head.derive(arguments[0]);
+            this.unchoose();
+        }
+        
         var grad = d;
         if (d.isgrad == false) {
             if (arguments.length === 1) {
-                // console.log(1);
-                // console.log(this.name);
+                console.log(1);
+                console.log(this.name);
+                console.log(i);
                 
                 if (d.rows > 1 || d.cols > 1) {
                     if (arguments[0].cols != d.rows) {
@@ -47,8 +70,8 @@ Function.prototype.backward = function () {
                 grad = arguments[0].mul(d);
                 // console.log(grad);
             } else {
-                // console.log(2);
-                // console.log(this.name);
+                console.log(2);
+                console.log(this.name);
                 // console.log(this.head);
                 if (d.rows > 1 || d.cols > 1) {
                     if (this.head.cols != d.rows) {
@@ -61,9 +84,10 @@ Function.prototype.backward = function () {
             }
         } else {
             grad = d;
-            // console.log(3);
-            // console.log(this.name);
-            // console.log(grad);
+            console.log(3);
+            console.log(this.name);
+            console.log(this);
+            console.log(grad);
         }
 
         this.vars[i].grad = grad;
@@ -105,7 +129,7 @@ function Tensor() {
     this.class = 'tensor';
     this.func = null;
     this.name = "";
-    this.require_grad = false;
+    // this.required_grad = false;
     
    if (args.length === 1) {
         if (Array.isArray(args[0])) {
@@ -121,7 +145,6 @@ function Tensor() {
                 this.nodes = args[0].nodes;
                 this.type = args[0].type;
                 this.op = args[0].op;
-                // this.parent = args[0].parent;
                 this.constant = args[0].constant;
             } else if (args[0].class == "function") {
                 this.rows = args[0].head.rows;
@@ -153,11 +176,8 @@ function Tensor() {
     }
 }
 
-Tensor.prototype.max = function() {
-    let l = torch.tensor(0);
-    let r = torch.tensor(this);
-    let z = torch.tensor();
-
+Tensor.prototype.ReLU = function() {
+    let z = torch.const();
     if (typeof(this) === "number") {
 
     } else {
@@ -176,13 +196,9 @@ Tensor.prototype.max = function() {
         }
     }
 
-    z.nodes.push(l);
-    // z.nodes[0].parent = this;
     z.nodes.push(this);
-    // z.nodes[1].parent = this;
     z.type = 1;
-    z.op = MAX;
-    // console.log(this);
+    z.op = ReLU;
     return z;
 }
 
@@ -225,7 +241,6 @@ Tensor.prototype.transpose = function () {
     z.cols = temp;
     
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.type = 1;
     z.op = TRANSPOSE;
     return z;
@@ -371,11 +386,7 @@ Tensor.prototype.mul = function (y) {
         }
     }
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    // if (typeof y !== "number") {
-    //     z.nodes[1].parent = this;
-    // }
     z.type = 1;
     z.op = MUL;
     return z;
@@ -438,11 +449,7 @@ Tensor.prototype.sub = function (y) {
     }
 
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    // if (typeof y !== "number") {
-    //     z.nodes[1].parent = this;
-    // }
     z.type = 1;
     z.op = SUB;
     return z;
@@ -452,8 +459,7 @@ Tensor.prototype.div = function (y) {
     var z = torch.tensor();
     z.rows = y.rows;
     z.cols = y.cols;
-    // console.log(this);
-    // console.log(y);
+
     if (this.rows == 0 && this.cols == 0) {
         if (y.rows == 0 && y.cols == 0) {
             z.mat = this.mat / y.mat;
@@ -499,9 +505,8 @@ Tensor.prototype.div = function (y) {
     }
     
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    // z.nodes[1].parent = this;
+
     z.type = 1;
     z.op = DIV;
     return z;
@@ -539,11 +544,8 @@ Tensor.prototype.pow = function (y) {
     }
 
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    // if (typeof y !== "number") {
-    //     z.nodes[1].parent = this;
-    // }
+
     z.type = 1;
     z.op = POW;
     return z;
@@ -629,11 +631,8 @@ Tensor.prototype.add = function (y) {
     }
 
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.nodes.push(y);
-    // if (typeof y !== "number") {
-    //     z.nodes[1].parent = this;
-    // }
+
     z.type = 1;
     z.op = ADD;
     return z;
@@ -679,7 +678,6 @@ Tensor.prototype.minus = function () {
     }
 
     z.nodes.push(this);
-    // z.nodes[0].parent = this;
     z.type = 1;
     z.op = MINUS;
     return z;
@@ -710,9 +708,6 @@ Tensor.prototype.derive = function(v) {
                 case SUB:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                // console.log('sub');
-                // console.log(l);
-                // console.log(r);
                 if (typeof r === "number") {
                     r = torch.tensor(r);
                 }
@@ -793,24 +788,14 @@ Tensor.prototype.derive = function(v) {
                 return -1;
 
                 case REDUCE_SUM:
-                console.log("reduce");
-                console.log(r);
+                // console.log("reduce");
+                // console.log(r);
                 var r = this.nodes[0].derive();
-                // var z = torch.tensor();
-                // z.rows = r.rows;
-                // z.cols = r.cols;
-                // for (var i=0; i<r.rows; i++) {
-                //     var row = [];
-                //     for (var j=0; j<r.cols; j++) {
-                //         row.push(r);
-                //     }
-                //     z.mat.push(row);
-                // }
                 return r;
 
-                case MAX:
+                case ReLU:
                 var l = this.nodes[0];
-                var r = this.nodes[1];
+                // var r = this.nodes[1];
                 // console.log(l);
                 // console.log(r);
                 return 1;
@@ -867,8 +852,8 @@ class F {
     }
 
     static relu(x) {
-        let func  = torch.function(torch.tensor(x).max());
-        func.name = "relu";
+        let func  = torch.function(torch.tensor(x).ReLU());
+        func.name = "ReLU";
         return func;
     }
 

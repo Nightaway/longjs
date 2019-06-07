@@ -7,34 +7,39 @@
 </head>
 <body style="height: 100%; margin: 0">
         <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
         <script type="text/javascript">
-            var lr = torch.tensor(0.001);
+            var lr = torch.const(0.001);
             var x = torch.const(1, 20);
             var model = nn.Sequentail(
                 nn.Linear(20, 3),
+                nn.ReLU(),
+                // nn.Linear(40, 3),
                 nn.Softmax()
             );
-            // console.log(model);
-            var y_ = model.pred(x);
-            console.log(y_);
-            var y = torch.const([1, 0, 0]);
-            // console.log(y);
-
             var lossfunc = nn.MSELoss();
-            var loss = lossfunc(y_, y);
-            console.log(loss);
-            loss.backward();
+            // console.log(model);
 
-            console.log(model.parameters);
-            // for (var z=0; z<model.parameters.length; z++) {
-            //     // console.log(lr.mul(model.parameters[z].grad));
-            //     // var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad));
-            //     // for (var r=0; r<model.parameters[z].rows; r++) {
-            //     //     for (var c=0; c<model.parameters[z].cols; c++) {
-            //     //         model.parameters[z].mat[r][c] = newTensor.mat[r][c];
-            //     //     }
-            //     // }
-            // }
+            for (var i=0; i<1; i++) {
+                var y_ = model.pred(x);
+                console.log(y_);
+                var y = torch.const([0, 1, 0]);
+                console.log(y);
+
+                var loss = lossfunc(y_, y);
+                console.log(loss);
+                loss.backward();
+
+                // console.log(model.parameters);
+                // for (var z=0; z<model.parameters.length; z++) {
+                //     var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
+                //     for (var r=0; r<model.parameters[z].rows; r++) {
+                //         for (var c=0; c<model.parameters[z].cols; c++) {
+                //             model.parameters[z].mat[r][c] = newTensor.mat[r][c];
+                //         }
+                //     }
+                // }
+            }
         </script>
 </body>
 </html>
