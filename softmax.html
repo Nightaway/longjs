@@ -18,9 +18,8 @@
                 nn.Softmax()
             );
             var lossfunc = nn.MSELoss();
-            // console.log(model);
 
-            for (var i=0; i<2; i++) {
+            for (var i=0; i<10; i++) {
                 var y_ = model.pred(x);
                 console.log(y_);
                 var y = torch.const([0, 1, 0]);

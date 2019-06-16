@@ -36,15 +36,15 @@
 
             var model = nn.Sequentail(
                 nn.Linear(784, 128),
-                // nn.ReLU(),
+                nn.ReLU(),
                 nn.Linear(128, 1),
                 nn.Sigmoid()
             );
             var lossfc = nn.MSELoss();
-            var lr = torch.const(0.001);
-            for (var j=0; j<1; j++) {
+            var lr = torch.const(0.0001);
+            for (var j=0; j<5; j++) {
                 // var j = 0;
-                for (var i=0; i<100; i++) {
+                for (var i=0; i<1000; i++) {
                     if (labels[i] == 0) {
                         var x = torch.const(images[i]);
                         // console.log(x);
@@ -59,7 +59,7 @@
                         loss.backward();
                         // console.log(model.parameters);
 
-                        console.log('opz');
+                        // console.log('opz');
                         // console.log(lr.mul(model.parameters[0].grad).transpose());
                         for (var z=0; z<model.parameters.length; z++) {
                             var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());

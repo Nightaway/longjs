@@ -42,7 +42,17 @@ Function.prototype.backward = function () {
                 }
                 grad.mat.push(rowa);
             }
-            
+
+            // console.log('-------');
+            // console.log(grad);
+            // console.log(arguments[0]);
+            for (var row=0; row<grad.rows; row++) {
+                for (var col=0; col<grad.cols; col++) {
+                    grad.mat[row][col] = grad.mat[row][col] * arguments[0].mat[row][col];
+                }
+            }
+            // console.log('-------');
+
             // console.log(grad);
             // console.log(4);
             this.vars[i].grad = grad;
@@ -171,7 +181,9 @@ function Tensor() {
         for (var i=0; i<this.rows; i++) {
             let row = [];
             for (var j=0; j<this.cols; j++) {
-                row.push(0.00005);
+                // row.push(0.00005);
+                row.push((Math.random())/1000);
+                // console.log(Math.random()*2-1);
             }
             this.mat.push(row);
         }
@@ -188,6 +200,9 @@ function Tensor() {
 
 Tensor.prototype.ReLU = function() {
     let z = torch.const();
+    // console.log('-------');
+    // console.log(this);
+    // console.log('-------');
     if (typeof(this) === "number") {
 
     } else {
@@ -825,9 +840,9 @@ Tensor.prototype.derive = function(v) {
                 var r = this.nodes[0].derive();
                 return r;
 
-                case ReLU:
-                var l = this.nodes[0];
-                return 1;
+                // case ReLU:
+                // var l = this.nodes[0];
+                // return 1;
             }
         break;
 
