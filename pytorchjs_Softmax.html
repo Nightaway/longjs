@@ -37,14 +37,13 @@
             var model = nn.Sequentail(
                 nn.Linear(784, 128),
                 // nn.ReLU(),
-                // nn.Linear(4096, 2048),
                 nn.Linear(128, 3),
                 nn.Softmax()
             );
             var lossfc = nn.MSELoss();
             var lr = torch.const(0.005);
-            for (var j=0; j<10; j++) {
-                for (var i=0; i<2000; i++) {
+            for (var j=0; j<5; j++) {
+                for (var i=0; i<1000; i++) {
                     if (labels[i] == 0) {
                         var x = torch.const(images[i]);
                         // console.log(x);
