@@ -4,6 +4,7 @@ const ADD = 'add';
 const MUL = 'mul';
 const TRANSPOSE = 'transpose';
 const POW = 'pow';
+const LOG = 'log';
 const SUB = 'sub';
 const DIV = 'div';
 const MINUS = 'minus';
@@ -21,10 +22,11 @@ function Function(head, name) {
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
         if (this.name == "ReLU") {
-            console.log(4);
-            console.log(this.name);
-            var l = this.head;
-            console.log(l);
+            // console.log(4);
+            // console.log(this.name);
+            // console.log(this);
+            var l = this.head.nodes[0];
+            // console.log(l);
 
             var grad = torch.tensor();
             grad.rows = l.rows;
@@ -34,65 +36,73 @@ Function.prototype.backward = function () {
                 for (var col=0; col<l.cols; col++) {
                     if (l.mat[row][col] > 0) {
                         rowa.push(1);
+                    } else {
+                        rowa.push(0);
                     }
                 }
                 grad.mat.push(rowa);
             }
-            console.log(grad);
-            return ;
+            
+            // console.log(grad);
+            // console.log(4);
+            this.vars[i].grad = grad;
+            if (this.vars[i].func !== null) {
+                this.vars[i].func.backward(this.vars[i].grad);
+            }
         } else {
             this.choose(this.vars[i]);
             var d = this.head.derive(arguments[0]);
             this.unchoose();
-        }
-        
-        var grad = d;
-        if (d.isgrad == false) {
-            if (arguments.length === 1) {
-                console.log(1);
-                console.log(this.name);
-                console.log(i);
-                
-                if (d.rows > 1 || d.cols > 1) {
-                    if (arguments[0].cols != d.rows) {
-                        d = d.transpose();
+    
+            var grad = d;
+            if (d.isgrad == false) {
+                if (arguments.length === 1) {
+                    // console.log(1);
+                    // console.log(this.name);
+                    // console.log('idx:' + i);
+                    
+                    if (d.rows > 1 || d.cols > 1) {
+                        if (arguments[0].cols != d.rows) {
+                            d = d.transpose();
+                        }
+
+                        if (arguments[0].cols != d.rows) {
+                            arguments[0] = arguments[0].transpose();
+                            if (arguments[0].cols != d.rows) { 
+                                d = d.transpose();
+                            }
+                        }
                     }
 
-                    if (arguments[0].cols != d.rows) {
-                        arguments[0] = arguments[0].transpose();
-                        if (arguments[0].cols != d.rows) { 
+                    // console.log(arguments[0]);
+                    // console.log(d);
+                    grad = arguments[0].mul(d);
+                    // console.log(grad);
+                } else {
+                    // console.log(2);
+                    // console.log(this.name);
+                    // console.log(this.head);
+                    if (d.rows > 1 || d.cols > 1) {
+                        if (this.head.cols != d.rows) {
                             d = d.transpose();
                         }
                     }
+                    // console.log(d);
+                    grad = this.head.mul(d);
+                    // console.log(grad);
                 }
-                // console.log(arguments[0]);
-                // console.log(d);
-                grad = arguments[0].mul(d);
-                // console.log(grad);
             } else {
-                console.log(2);
-                console.log(this.name);
-                // console.log(this.head);
-                if (d.rows > 1 || d.cols > 1) {
-                    if (this.head.cols != d.rows) {
-                        d = d.transpose();
-                    }
-                }
-                // console.log(d);
-                grad = this.head.mul(d);
+                grad = d;
+                // console.log(3);
+                // console.log(this.name);
+                // console.log(this);
                 // console.log(grad);
             }
-        } else {
-            grad = d;
-            console.log(3);
-            console.log(this.name);
-            console.log(this);
-            console.log(grad);
-        }
 
-        this.vars[i].grad = grad;
-        if (this.vars[i].func !== null) {
-            this.vars[i].func.backward(this.vars[i].grad);
+            this.vars[i].grad = grad;
+            if (this.vars[i].func !== null) {
+                this.vars[i].func.backward(this.vars[i].grad);
+            }
         }
     }
 }
@@ -414,7 +424,6 @@ Tensor.prototype.sub = function (y) {
                 z.mat.push(row);
             }
         }
-        
     } else {
         if (this.rows == 0 && this.cols == 0) {
             if (y.rows == 1 && y.cols == 1) {
@@ -546,6 +555,44 @@ Tensor.prototype.pow = function (y) {
     z.nodes.push(this);
     z.nodes.push(y);
 
+    z.type = 1;
+    z.op = POW;
+    return z;
+}
+
+
+Tensor.prototype.log = function () {
+    var z = torch.tensor();
+    z.rows = this.rows;
+    z.cols = this.cols;
+
+    if (z.rows == 0 && z.cols == 0) {
+        if (typeof y == "number") {
+            z.mat = Math.log(this.mat);
+        } else if (y.rows == 0 && y.cols == 0) {
+            z.mat = Math.log(this.mat);
+        } else {
+            z.rows = y.rows;
+            z.cols = y.cols;
+            for (var i=0; i<z.rows; i++) {
+                var row = [];
+                for (var j=0; j<z.cols; j++) {
+                    row.push(Math.log(this.mat[i][j]));
+                }
+                z.mat.push(row);
+            }
+        }
+    } else {
+        for (var i=0; i<this.rows; i++) {
+            var row = [];
+            for (var j=0; j<this.cols; j++) {
+                row.push(Math.log(this.mat[i][j]));
+            }
+            z.mat.push(row);
+        }
+    }
+
+    z.nodes.push(this);
     z.type = 1;
     z.op = POW;
     return z;
@@ -749,34 +796,21 @@ Tensor.prototype.derive = function(v) {
                 var r = this.nodes[1].derive();
 
                 if (this.nodes[0].rows === 1 && this.nodes[0].cols > 1) {
-                    // console.log("=========== in ============s");
                     var d_x = (this.nodes[1].mul(l).sub(this.nodes[0].mul(r))).div(this.nodes[1].pow(2));
                     var grad = v.mul(d_x);
-                    // console.log(v.mul(d_x));
                     for (var i=0; i<this.nodes[0].cols; i++) {
                         var d_sum = this.nodes[0].mat[0][i];
-                        // console.log(d_sum);
                         var d_x_i = this.nodes[0].mul(torch.const(d_sum)).div(this.nodes[1].pow(2)).minus();
-                        // console.log(d_x_i.mat);
-                        // console.log(v.mul(d_x_i));
                         let grad_ = v.mul(d_x_i);
                         for (var j=0; j<this.nodes[0].cols; j++) {
                             if (i !== j)
                                 grad.mat[0][i] += grad_.mat[0][j];
                         }
                     }
-                    // console.log(grad);
                     grad.isgrad = true;
                     return grad;
                 }
-                // console.log("div");
-                // console.log(this.nodes[0]);
-                // console.log(this.nodes[1]);
-                // console.log(l);
-                // console.log(r);
-                // console.log('---');
-                // console.log(this.nodes[1].mul(l));
-                // console.log(this.nodes[0].mul(r));
+                
                 if (this.nodes[1].rows == 0 && this.nodes[1].cols == 0) {
                     return (l * this.nodes[1].mat - this.nodes[0].mat* r.mat) / Math.pow(this.nodes[1].mat, 2);
                 } else {
@@ -788,16 +822,11 @@ Tensor.prototype.derive = function(v) {
                 return -1;
 
                 case REDUCE_SUM:
-                // console.log("reduce");
-                // console.log(r);
                 var r = this.nodes[0].derive();
                 return r;
 
                 case ReLU:
                 var l = this.nodes[0];
-                // var r = this.nodes[1];
-                // console.log(l);
-                // console.log(r);
                 return 1;
             }
         break;

@@ -18,10 +18,12 @@
                 return activation(x) * (1-activation(x));
             }
 
+            // 自动求导
             var y_ = sigmoid(torch.tensor(10));
             var der = y_.head.derive();
             console.log(der);
 
+            // 解析法求导
             var y_ = activation(10);
             var der = derive(10);
             console.log(der);

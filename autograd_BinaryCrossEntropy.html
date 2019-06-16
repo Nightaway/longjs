@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var y  = 1.0;
+            var y_ = 0.8;
+            function BinaryCrossEntropy(y, y_) {
+                return -(y*Math.log(y_) + (1-y)*Math.log(1-y_));
+            }
+
+            var r = BinaryCrossEntropy(y, y_);
+            console.log(r);
+
+            function BCE(y, y_) {
+                y =  torch.const(y);
+                return torch.function(y.sub(torch.variable(y_).log()).sub(torch.const(y_)));
+            }
+
+            var g = BCE(y, y_);
+            console.log(g); 
+        </script>
+</body>
+</html>

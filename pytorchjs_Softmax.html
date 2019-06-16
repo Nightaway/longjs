@@ -35,10 +35,10 @@
             }
 
             var model = nn.Sequentail(
-                nn.Linear(784, 2048),
+                nn.Linear(784, 128),
                 // nn.ReLU(),
                 // nn.Linear(4096, 2048),
-                nn.Linear(2048, 3),
+                nn.Linear(128, 3),
                 nn.Softmax()
             );
             var lossfc = nn.MSELoss();

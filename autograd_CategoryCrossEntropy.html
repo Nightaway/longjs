@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var y  = 1.0;
+            var y_ = 1.0;
+            function BinaryCrossEntropy(y, y_) {
+                return -(y*Math.log(y_) + (1-y)*Math.log(1-y_));
+            }
+
+            var r = BinaryCrossEntropy(y, y_);
+            console.log(r);
+        </script>
+</body>
+</html>
