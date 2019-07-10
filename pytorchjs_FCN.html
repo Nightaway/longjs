@@ -44,7 +44,7 @@
             var lr = torch.const(0.0001);
             for (var j=0; j<5; j++) {
                 // var j = 0;
-                for (var i=0; i<1000; i++) {
+                for (var i=0; i<100; i++) {
                     if (labels[i] == 0) {
                         var x = torch.const(images[i]);
                         // console.log(x);
@@ -59,7 +59,6 @@
                         loss.backward();
                         // console.log(model.parameters);
 
-                        // console.log('opz');
                         // console.log(lr.mul(model.parameters[0].grad).transpose());
                         for (var z=0; z<model.parameters.length; z++) {
                             var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
@@ -84,11 +83,14 @@
                         // console.log(y_);
                         var y = torch.tensor(1);
                         var loss = lossfc(y_, y);
+                        // if (loss.head.mat[0][0] < 0) {
+                        //     loss.head.mat[0][0] = -loss.head.mat[0][0];
+                        // }
                         // console.log(loss);
                         loss.backward();
 
                         for (var z=0; z<model.parameters.length; z++) {
-                            var newTensor = model.parameters[z].sub(lr.mul(model.parameters[z].grad).transpose());
+                            var newTensor = model.parameters[z].add(lr.mul(model.parameters[z].grad).transpose());
                             for (var r=0; r<model.parameters[z].rows; r++) {
                                 for (var c=0; c<model.parameters[z].cols; c++) {
                                     model.parameters[z].mat[r][c] = newTensor.mat[r][c];

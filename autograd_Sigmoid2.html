@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <script type="text/javascript">
+            function sigmoid(x) {
+                return torch.function(torch.const(1).div(torch.const(1).add(torch.const(Math.E).pow(torch.tensor(x).minus()))));
+            }
+
+            function activation(x) {
+                return 1.0 / (1.0 + Math.exp(-x));
+            }
+
+            function derive(x) {
+                return activation(x) * (1-activation(x));
+            }
+
+            // 自动求导
+            var y_ = sigmoid(torch.tensor(-0.56));
+            var der = y_.head.derive();
+            console.log(der);
+
+            // 解析法求导
+            var y_ = activation(-0.56);
+            var der = derive(-0.56);
+            console.log(der);
+        </script>
+</body>
+</html>

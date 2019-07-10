@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            function sig(x) {
+                return 1.0 / (1.0 + Math.exp(-x));
+            }
+            var a = nn.Sigmoid()
+            console.log(a(-0.5))
+
+            console.log(sig(-0.5))
+        </script>
+</body>
+</html>

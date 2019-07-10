@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var y  = torch.const(1.0);
+            var y_ = torch.variable(0.8);
+            function MSE(y_, y) {
+                return torch.function(y_.sub(torch.const(y)).pow(torch.const(2)).div(torch.const(2)));
+            }
+            var loss = MSE(y_, y);
+            console.log(loss);
+
+            loss.backward();
+            console.log(y_);
+        </script>
+</body>
+</html>
