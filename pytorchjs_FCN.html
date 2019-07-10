@@ -40,7 +40,7 @@
                 nn.Linear(128, 1),
                 nn.Sigmoid()
             );
-            var lossfc = nn.MSELoss1();
+            var lossfc = nn.MSELoss();
             var lr = torch.const(0.0001);
             for (var j=0; j<5; j++) {
                 // var j = 0;

@@ -157,7 +157,7 @@ function Tensor() {
     this.class = 'tensor';
     this.func = null;
     this.name = "";
-    // this.required_grad = false;
+    this.shape = [];
     
    if (args.length === 1) {
         if (Array.isArray(args[0])) {
@@ -857,7 +857,7 @@ Tensor.prototype.derive = function(v) {
                     l = torch.const(l);
                 }
                 // console.log('div');
-                // // console.log(this);
+                // console.log(this);
                 // console.log(this.nodes[0]);
                 // console.log(this.nodes[1]);
                 // console.log(l);
@@ -964,7 +964,7 @@ class F {
         let exp = torch.const(Math.E).pow(torch.tensor(x));
         let sum = exp.reduce_sum();
         let func = torch.function(exp.div(sum));
-        func.name = "softmax";
+        func.name = "Softmax";
         return func;
     }
 }   
@@ -1022,18 +1022,18 @@ class nn {
         return F.softmax;
     }
 
-    static MSELoss() {
+    static MSELoss1() {
         return function(y_, y) {
             let func = torch.function(torch.tensor(y_).sub(torch.const(y)));
-            func.name = "MSELoss";
+            func.name = "MSELoss1";
             return func;
         }
     }
 
-    static MSELoss1() {
+    static MSELoss() {
         return function(y_, y) {
             let func = torch.function(torch.tensor(y_).sub(torch.const(y)).pow(torch.const(2)));
-            func.name = "MSELoss1";
+            func.name = "MSELoss";
             return func;
         }
     }
