@@ -40,7 +40,7 @@
                 nn.Linear(128, 1),
                 nn.Sigmoid()
             );
-            var lossfc = nn.MSELoss();
+            var lossfc = nn.MSELoss1();
             var lr = torch.const(0.0001);
             for (var j=0; j<5; j++) {
                 // var j = 0;
@@ -70,9 +70,9 @@
                         }
             
                         if (i%10 == 0) {
-                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat);
                             option.xAxis.data.push((j*1000)+i)
-                            option.series[0].data.push(loss.head.mat[0][0])
+                            option.series[0].data.push(loss.head.mat)
                         }
                     } 
                     else if (labels[i] == 1) {
@@ -99,9 +99,9 @@
                         }
                         // console.log(model.parameters);
                         if (i%10 == 0) {
-                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat[0][0]);
+                            console.log("iter:" + j + ' , '+ i +": " + loss.head.mat);
                             option.xAxis.data.push((j*1000)+i)
-                            option.series[0].data.push(loss.head.mat[0][0])
+                            option.series[0].data.push(loss.head.mat)
                         }
                     }
                 }

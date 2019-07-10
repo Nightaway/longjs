@@ -14,9 +14,9 @@
 
             var model = nn.Sequentail(
                 nn.Linear(10, 5),
-                // nn.ReLU(),
+                nn.ReLU(),
                 nn.Linear(5, 1),
-                nn.Sigmoid() 
+                nn.Sigmoid()
             );
             var lossfc = nn.MSELoss();
             var lr = torch.const(1);

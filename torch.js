@@ -22,6 +22,10 @@ function Function(head, name) {
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
         if (this.name == "ReLU") {
+            // console.log('-------')
+            // console.log(this.head.nodes[0])
+            // console.log(arguments[0])
+            // console.log('-------')
             var l = this.head.nodes[0];
             var grad = torch.tensor();
             grad.rows = l.rows;
@@ -37,13 +41,11 @@ Function.prototype.backward = function () {
                 }
                 grad.mat.push(rowa);
             }
-
             for (var row=0; row<grad.rows; row++) {
                 for (var col=0; col<grad.cols; col++) {
-                    grad.mat[row][col] = grad.mat[row][col] * arguments[0].mat[row][col];
+                    grad.mat[row][col] = grad.mat[row][col] * arguments[0].mat[col][row];
                 }
             }
-
             this.vars[i].grad = grad;
             if (this.vars[i].func !== null) {
                 this.vars[i].func.backward(this.vars[i].grad);
@@ -60,7 +62,12 @@ Function.prototype.backward = function () {
                 // console.log(d)
                 // console.log('---')
             }
-            // console.log('grad:' + d);
+            // console.log('name:' + this.name);
+            // console.log(d);
+
+            if (typeof d == "number") {
+                d = torch.tensor(d);
+            }
 
             if (this.name == "Sigmoid") {
                 // console.log('xxxxx')
@@ -540,12 +547,17 @@ Tensor.prototype.pow = function (y) {
     var z = torch.tensor();
     z.rows = this.rows;
     z.cols = this.cols;
-
+    // console.log('----');
+    // console.log(this);
+    // console.log(y);
+    // console.log('----');
     if (z.rows == 0 && z.cols == 0) {
         if (typeof y == "number") {
             z.mat = Math.pow(this.mat, y);
         } else if (y.rows == 0 && y.cols == 0) {
             z.mat = Math.pow(this.mat, y.mat);
+        } else if (y.rows == 1 && y.cols == 1) {
+            z.mat = Math.pow(this.mat, y.mat[0][0]);
         } else {
             z.rows = y.rows;
             z.cols = y.cols;
@@ -553,6 +565,17 @@ Tensor.prototype.pow = function (y) {
                 var row = [];
                 for (var j=0; j<z.cols; j++) {
                     row.push(Math.pow(this.mat, y.mat[i][j]));
+                }
+                z.mat.push(row);
+            }
+        }
+    } else if (z.rows == 1 && z.cols == 1) {
+        if (y.rows == 0 && y.cols == 0) {
+            // z.mat = Math.pow(this.mat[0][0], y.mat);
+            for (var i=0; i<this.rows; i++) {
+                var row = [];
+                for (var j=0; j<this.cols; j++) {
+                    row.push(Math.pow(this.mat[i][j], y.mat));
                 }
                 z.mat.push(row);
             }
@@ -1009,7 +1032,7 @@ class nn {
 
     static MSELoss1() {
         return function(y_, y) {
-            let func = torch.function(torch.tensor(y_).sub(torch.const(y)).pow(torch.const(2)).div(torch.const(2)));
+            let func = torch.function(torch.tensor(y_).sub(torch.const(y)).pow(torch.const(2)));
             func.name = "MSELoss1";
             return func;
         }
