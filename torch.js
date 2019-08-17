@@ -8,8 +8,11 @@ const LOG = 'log';
 const SUB = 'sub';
 const DIV = 'div';
 const MINUS = 'minus';
-const ReLU = 'ReLU';
+const ReLU = 'relu';
 const REDUCE_SUM = 'reduce_sum';
+
+const OP = 'op';
+const TENSOR = 'tensor';
 
 function Function(head, name) {
     this.head = head;
@@ -22,10 +25,6 @@ function Function(head, name) {
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
         if (this.name == "ReLU") {
-            // console.log('-------')
-            // console.log(this.head.nodes[0])
-            // console.log(arguments[0])
-            // console.log('-------')
             var l = this.head.nodes[0];
             var grad = torch.tensor();
             grad.rows = l.rows;
@@ -54,27 +53,12 @@ Function.prototype.backward = function () {
             this.choose(this.vars[i]);
             var d = this.head.derive(arguments[0]);
             this.unchoose();
-            if (this.name == "MSELoss") {
-                // console.log('---')
-                // if (arguments[0] != undefined) {
-                //     arguments[0].mat = -arguments[0].mat;
-                // }
-                // console.log(d)
-                // console.log('---')
-            }
-            // console.log('name:' + this.name);
-            // console.log(d);
 
             if (typeof d == "number") {
                 d = torch.tensor(d);
             }
 
             if (this.name == "Sigmoid") {
-                // console.log('xxxxx')
-                // console.log(arguments[0])
-                // console.log(this)
-                // console.log(d)
-                // console.log('xxxxx')
                 d.isgrad = true;
             }
 
@@ -102,21 +86,14 @@ Function.prototype.backward = function () {
                         }
                         grad = this.head.mul(d);
                     } else {
-                        // console.log('+++++')
                         grad = this.head.nodes[0].mul(d);
                         if (this.name == "MSELoss") {
                             grad.mat = -grad.mat;
                         }
-                        // console.log(grad)
                     }
                 }
             }
 
-            if (this.name == "Sigmoid") {
-                // console.log('yyyyy')
-                // console.log(grad)
-                // console.log('yyyyy')
-            }
             this.vars[i].grad = grad;
             if (this.vars[i].func !== null) {
                 this.vars[i].func.backward(this.vars[i].grad);
@@ -145,12 +122,9 @@ Function.prototype.findAllVaribles = function () {
 
 function Tensor() {
     var args = arguments[0];
-    this.rows = 0;
-    this.cols = 0;
-    this.mat = [];
     this.grad = null;
     this.nodes = [];
-    this.type = 2;
+    this.type = TENSOR;
     this.op = 0;
     this.isgrad = false;
     this.constant = false;
@@ -158,76 +132,97 @@ function Tensor() {
     this.func = null;
     this.name = "";
     this.shape = [];
+    this.darray = [];
     
    if (args.length === 1) {
         if (Array.isArray(args[0])) {
-            this.rows = args.length;
-            this.cols = args[0].length;
-            this.mat.push(args[0]);
+            var dim = [];
+            var arg = args[0][0];
+            while (Array.isArray(arg)) {
+                dim.push(arg.length);
+                arg = arg[0];
+            }
+            this.shape = [args[0].length];
+            for (var i=0; i<dim.length; i++) {
+                this.shape.push(dim[i]);
+            }
+            this.darray = args[0];
         } else if (typeof args[0] == "object") {
             if (args[0].class == "tensor") {
-                this.rows = args[0].rows;
-                this.cols = args[0].cols;
-                this.mat = args[0].mat;
                 this.grad = args[0].grad;
                 this.nodes = args[0].nodes;
                 this.type = args[0].type;
                 this.op = args[0].op;
                 this.constant = args[0].constant;
+                this.name = args[0].name;
+                this.shape = args[0].shape;
+                this.darray = args[0].darray;
             } else if (args[0].class == "function") {
-                this.rows = args[0].head.rows;
-                this.cols = args[0].head.cols;
-                this.mat = args[0].head.mat;
+                this.shape = args[0].shape;
+                this.darray = args[0].darray;
                 this.func = args[0];
-            } 
+            }
         } else {
-            this.mat = args[0];
+            throw new Error('Tensor Init Error');
         }
     } else if (args.length === 2) {
-        this.rows = args[0];
-        this.cols = args[1];
-        for (var i=0; i<this.rows; i++) {
-            let row = [];
-            for (var j=0; j<this.cols; j++) {
-                row.push(0.00005);
-                // row.push((Math.random())/1000);
-                // console.log(Math.random()*2-1);
-            }
-            this.mat.push(row);
-        }
-    } else if (args.length === 3) {
-        this.rows = args[0];
-        this.cols = args[1];
-        for (var i=0; i<this.rows; i++) {
-            for (var j=0; j<this.cols; j++) {
-                this.mat.push([args[2]]);
+        this.shape = args[0];
+        var prev = null;
+        var len = args[0].length;
+        for (var j=args[0][len-1]; j>0; j--) {
+            var row  = [];
+            if (prev == null) {
+                for (var k=0; k<j; k++) {
+                    row.push(args[1]);
+                }
+                prev = row;
+            } else {
+                for (var k=0; k<j; k++) {
+                    row.push(prev);
+                }
+                prev = row;
             }
         }
+        this.darray = prev;
+    } else if (args.length === 0) {
+
+    } else {
+        throw new Error('Tensor Init Error');
     }
 }
 
 Tensor.prototype.ReLU = function() {
     let z = torch.const();
-    if (typeof(this) === "number") {
-
-    } else {
-        if (this.rows === 0 && this.cols === 0) {
-
-        } else {
-            z.rows = this.rows;
-            z.cols = this.cols;
-            for (let i=0; i<this.rows; i++) {
-                let row = [];
-                for (let j=0; j<this.cols; j++) {
-                    row.push(Math.max(0, this.mat[i][j]));
-                }
-                z.mat.push(row);
-            }
-        }
+    // if (typeof(this) === "number") {
+    // } else {
+    //     if (this.rows === 0 && this.cols === 0) {
+    //     } else {
+    //         z.rows = this.rows;
+    //         z.cols = this.cols;
+    //         for (let i=0; i<this.rows; i++) {
+    //             let row = [];
+    //             for (let j=0; j<this.cols; j++) {
+    //                 row.push(Math.max(0, this.mat[i][j]));
+    //             }
+    //             z.mat.push(row);
+    //         }
+    //     }
+    // }
+    z.shape = this.shape;
+    // var darray = [];
+    // for (var i=0; i<this.shape.length; i++) {
+    var row = [];
+    for (var i=0; i<this.shape[0]; i++) {
+        row.push(Math.max(0, this.darray[i]));
+        // for (var j=0; j<this.shape[j][k]; j++) {
+        // }
     }
+        // darray.push(row);
+    // }
+    z.darray = row;
 
     z.nodes.push(this);
-    z.type = 1;
+    z.type = OP;
     z.op = ReLU;
     return z;
 }
@@ -547,10 +542,7 @@ Tensor.prototype.pow = function (y) {
     var z = torch.tensor();
     z.rows = this.rows;
     z.cols = this.cols;
-    // console.log('----');
-    // console.log(this);
-    // console.log(y);
-    // console.log('----');
+   
     if (z.rows == 0 && z.cols == 0) {
         if (typeof y == "number") {
             z.mat = Math.pow(this.mat, y);
@@ -571,7 +563,6 @@ Tensor.prototype.pow = function (y) {
         }
     } else if (z.rows == 1 && z.cols == 1) {
         if (y.rows == 0 && y.cols == 0) {
-            // z.mat = Math.pow(this.mat[0][0], y.mat);
             for (var i=0; i<this.rows; i++) {
                 var row = [];
                 for (var j=0; j<this.cols; j++) {
@@ -776,7 +767,7 @@ Tensor.prototype.derive = function(v) {
     }
 
     switch (this.type) {
-        case 1:
+        case OP:
             switch(this.op) {
                 case ADD:
                 var l = this.nodes[0].derive();
@@ -787,11 +778,6 @@ Tensor.prototype.derive = function(v) {
                 if (typeof r === "number") {
                     r = torch.tensor(r);
                 }
-                // console.log('add');
-                // console.log(this.nodes[0]);
-                // console.log(this.nodes[1]);
-                // console.log(l);
-                // console.log(r);
                 return l.add(r);
 
                 case SUB:
@@ -829,12 +815,6 @@ Tensor.prototype.derive = function(v) {
                 if (typeof l === "number") {
                     l = torch.tensor(l);
                 }
-                // console.log('pow');
-                // console.log(this.nodes[0]);
-                // console.log(this.nodes[1]);
-                // console.log(l);
-                // console.log(r);
-                // console.log(this);
                 if (this.nodes[0].constant) {
                     if (this.nodes[1].rows == 0 && this.nodes[1].cols == 0) {
                         return r.mat * Math.pow(this.nodes[0].mat, this.nodes[1].mat);
@@ -856,12 +836,6 @@ Tensor.prototype.derive = function(v) {
                 if (typeof l === "number") {
                     l = torch.const(l);
                 }
-                // console.log('div');
-                // console.log(this);
-                // console.log(this.nodes[0]);
-                // console.log(this.nodes[1]);
-                // console.log(l);
-                // console.log(r);
 
                 if (this.nodes[0].rows === 1 && this.nodes[0].cols > 1) {
                     var d_x = (this.nodes[1].mul(l).sub(this.nodes[0].mul(r))).div(this.nodes[1].pow(2));
@@ -903,7 +877,7 @@ Tensor.prototype.derive = function(v) {
             }
         break;
 
-        case 2:
+        case TENSOR:
             if (this.constant) {
                 return 0;
             } else if (this.function !== null) {
