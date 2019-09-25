@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <script type="text/javascript">
+           var x = torch.tensor([[[1, 2, 3], [2, 3, 4]], [[2, 4, 5], [2, 3, 4]]]);
+           console.log(x.shape); //[2, 2, 3]
+           console.log(x);
+
+           var x = torch.tensor([[[1, 2, 3], [2, 3, 4]]]);
+           console.log(x.shape); //[1, 2, 3]
+           console.log(x);
+
+           var x = torch.tensor([1, 2, 3]);
+           console.log(x.shape); //[3]
+           console.log(x);
+
+           var x = torch.tensor([1, 2, 3], 0.5);
+           console.log(x);
+
+           var x = torch.tensor([-2, 1, 2]);
+        //    var relu = nn.ReLU();
+           console.log(x.ReLU());
+        </script>
+</body>
+</html>
