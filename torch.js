@@ -2,6 +2,7 @@
 
 const ADD = 'add';
 const MUL = 'mul';
+const MATMUL = 'matmul';
 const TRANSPOSE = 'transpose';
 const POW = 'pow';
 const LOG = 'log';
@@ -24,85 +25,24 @@ function Function(head, name) {
 
 Function.prototype.backward = function () {
     for (var i=0; i<this.vars.length; i++) {
-        if (this.name == "ReLU") {
-            var l = this.head.nodes[0];
-            var grad = torch.tensor();
-            grad.rows = l.rows;
-            grad.cols = l.cols;
-            for (var row=0; row<l.rows; row++) {
-                var rowa = [];
-                for (var col=0; col<l.cols; col++) {
-                    if (l.mat[row][col] > 0) {
-                        rowa.push(1);
-                    } else {
-                        rowa.push(0);
-                    }
-                }
-                grad.mat.push(rowa);
-            }
-            for (var row=0; row<grad.rows; row++) {
-                for (var col=0; col<grad.cols; col++) {
-                    grad.mat[row][col] = grad.mat[row][col] * arguments[0].mat[col][row];
-                }
-            }
-            this.vars[i].grad = grad;
-            if (this.vars[i].func !== null) {
-                this.vars[i].func.backward(this.vars[i].grad);
-            }
-        } else {
-            this.choose(this.vars[i]);
-            var d = this.head.derive(arguments[0]);
-            this.unchoose();
+        this.setvar(this.vars[i]);
+        var d = this.head.derive(arguments[0]);
+        this.unsetvar(this.vars[i]);
 
-            if (typeof d == "number") {
-                d = torch.tensor(d);
-            }
+        console.log(d);
 
-            if (this.name == "Sigmoid") {
-                d.isgrad = true;
-            }
+        var grad = this.head.matmul(d);
 
-            var grad = d;
-            if (d.isgrad == false) {
-                if (arguments.length === 1) {
-                    if (d.rows > 1 || d.cols > 1) {
-                        if (arguments[0].cols != d.rows) {
-                            d = d.transpose();
-                        }
-
-                        if (arguments[0].cols != d.rows) {
-                            arguments[0] = arguments[0].transpose();
-                            if (arguments[0].cols != d.rows) { 
-                                d = d.transpose();
-                            }
-                        }
-                    }
-
-                    grad = arguments[0].mul(d);
-                } else {
-                    if (d.rows > 1 || d.cols > 1) {
-                        if (this.head.cols != d.rows) {
-                            d = d.transpose();
-                        }
-                        grad = this.head.mul(d);
-                    } else {
-                        grad = this.head.nodes[0].mul(d);
-                        if (this.name == "MSELoss") {
-                            grad.mat = -grad.mat;
-                        }
-                    }
-                }
-            }
-
-            this.vars[i].grad = grad;
-            if (this.vars[i].func !== null) {
-                this.vars[i].func.backward(this.vars[i].grad);
-            }
+        console.log(grad);
+        this.vars[i].grad = grad;
+        console.log(this.vars[i]);
+        if (this.vars[i].func !== null) {
+            this.vars[i].func.backward(this.vars[i].grad);
         }
     }
 }
 
-Function.prototype.choose = function(v) {
+Function.prototype.setvar = function(v) {
     for (var i=0; i<this.vars.length; i++) {
         if (this.vars[i] !== v) {
             this.vars[i].constant = true;
@@ -110,7 +50,7 @@ Function.prototype.choose = function(v) {
     }
 }
 
-Function.prototype.unchoose = function () {
+Function.prototype.unsetvar = function () {
     for (var i=0; i<this.vars.length; i++) {
         this.vars[i].constant = false;
     }
@@ -158,9 +98,12 @@ function Tensor() {
                 this.shape = args[0].shape;
                 this.darray = args[0].darray;
             } else if (args[0].class == "function") {
-                this.shape = args[0].shape;
-                this.darray = args[0].darray;
+                this.shape = args[0].head.shape;
+                this.darray = args[0].head.darray;
                 this.func = args[0];
+                // this.op = args[0].head.op;
+                // this.type = args[0].head.type;
+                // this.name = args[0].head.name;
             }
         } else {
             throw new Error('Tensor Init Error');
@@ -185,585 +128,296 @@ function Tensor() {
         }
         this.darray = prev;
     } else if (args.length === 0) {
-
+        // console.log('Arg len 0');
     } else {
         throw new Error('Tensor Init Error');
     }
 }
 
+function iter(darray, func, post) {
+    if (darray.length > 0 && Array.isArray(darray[0])) {
+        var arr = [];
+        for (var i=0; i<darray.length; i++) {
+            arr.push(iter(darray[i], func, post));
+        }
+        return arr;
+        
+    } else {
+        var arr = [];
+        for (var i=0; i<darray.length; i++) {
+            arr.push(func(darray[i]));
+        }
+
+        if (post != null && post != undefined) {
+            arr = post(arr);
+        }
+        return arr;
+    }
+}
+
 Tensor.prototype.ReLU = function() {
     let z = torch.const();
-    // if (typeof(this) === "number") {
-    // } else {
-    //     if (this.rows === 0 && this.cols === 0) {
-    //     } else {
-    //         z.rows = this.rows;
-    //         z.cols = this.cols;
-    //         for (let i=0; i<this.rows; i++) {
-    //             let row = [];
-    //             for (let j=0; j<this.cols; j++) {
-    //                 row.push(Math.max(0, this.mat[i][j]));
-    //             }
-    //             z.mat.push(row);
-    //         }
-    //     }
-    // }
-    z.shape = this.shape;
-    // var darray = [];
-    // for (var i=0; i<this.shape.length; i++) {
-    var row = [];
-    for (var i=0; i<this.shape[0]; i++) {
-        row.push(Math.max(0, this.darray[i]));
-        // for (var j=0; j<this.shape[j][k]; j++) {
-        // }
-    }
-        // darray.push(row);
-    // }
-    z.darray = row;
 
+    function _relu(e) {
+        if (e <= 0) return 0;
+        return e;
+    }
+
+    var darray = iter(this.darray, _relu);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
     z.type = OP;
     z.op = ReLU;
     return z;
 }
 
+function ident(e) {
+    return e;
+}
+
 Tensor.prototype.reduce_sum = function () {
-    var z = torch.const();
-    z.rows = 1;
-    z.cols = 1;
-    var sum = 0;
-    for (var i=0; i<this.rows; i++) {
-        for (var j=0; j<this.cols; j++) {
-            sum += this.mat[i][j];
+    function _reduce_sum(a) {
+        var sum = 0;
+        for (var i=0; i<a.length; i++) {
+            sum += a[i];
         }
+        return sum;
     }
-    var v = torch.const();
-    v.rows = this.rows;
-    v.cols = this.cols;
-    v.mat = this.mat;
-    z.nodes.push(v);
-    z.mat.push([sum]);
-    z.type = 1;
+
+    var darray = iter(this.darray, ident, _reduce_sum);
+    var z = torch.tensor(darray);
+    z.darray = darray;
+    z.shape = z.shape;
+    z.nodes.push(this);
+    z.type = OP;
     z.op = REDUCE_SUM;
     return z;
 }
 
 Tensor.prototype.transpose = function () {
-    if (this.rows == 0 && this.cols == 0) {
-        return this;
-    }
-
-    var z = torch.tensor();
-    for (var i=0; i<this.cols; i++) {
+    let z = torch.const();
+    var darray = [];
+    for (var i=0; i<this.shape[1]; i++) {
         var rows = [];
-        for (var j=0; j<this.rows; j++) {
-            rows.push(this.mat[j][i]);
+        for (var j=0; j<this.shape[0]; j++) {
+            rows.push(this.darray[j][i]);
         }
-        z.mat.push(rows);
+        darray.push(rows);
     }
-    var temp = this.rows;
-    z.rows = this.cols;
-    z.cols = temp;
-    
+    z.darray = darray;
+    z.shape[0] = this.shape[1];
+    z.shape[1] = this.shape[0];
     z.nodes.push(this);
     z.type = 1;
     z.op = TRANSPOSE;
     return z;
 }
 
-Tensor.prototype.transpose_ = function () {
-    if (this.rows == 0 && this.cols == 0) {
-        return this;
-    }
-
-    var z = torch.tensor();
-    for (var i=0; i<this.cols; i++) {
-        var rows = [];
-        for (var j=0; j<this.rows; j++) {
-            rows.push(this.mat[j][i]);
-        }
-        z.mat.push(rows);
-    }
-    var temp = this.rows;
-    z.rows = this.cols;
-    z.cols = temp;
-    return z;
-}
-
-Tensor.prototype.multiply = function (y) {
-    var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-    if (z.rows == 0 && z.cols == 0) {
-        z.mat = this.mat * y.mat;
-    } else {
-        for (var i=0; i<this.rows; i++) {
-            var row = [];
-            for (var j=0;j<this.cols; j++) {
-                row.push(this.mat[i][j]*y.mat[i][j]);
-            }
-            z.mat.push(row);
-        }
-    }
-    return z;
-}
-
 Tensor.prototype.mul = function (y) {
-    if (this.rows == y.rows && this.cols == y.cols) {
-        return this.multiply(y);
+    if (typeof y !== "number") {
+        throw new Error('Mul oprand2 must is Number');
     }
-    var z = torch.tensor();
-    if (typeof y == "number") {
-        z.rows = this.rows;
-        z.cols = this.cols;
-        if (this.rows == 0 && this.cols == 0) {
-            for (var i=0; i<this.rows; i++) {
-                var row = [];
-                for (var j=0; j<this.cols; j++) {
-                    row.push(this.mat * y);
-                }
-                z.mat.push(row);
-            }
-        } else {
-            for (var i=0; i<this.rows; i++) {
-                var row = [];
-                for (var j=0; j<this.cols; j++) {
-                    row.push(this.mat[i][j] * y);
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        if (this.rows == 0 && this.cols == 0) {
-            if (this.mat == 0) {
-                z.rows = 0;
-                z.cols = 0;
-                z.mat = 0;
-            } else if (y.rows == 0 && y.cols == 0) {
-                z.rows = y.rows;
-                z.cols = y.cols;
-                z.mat = this.mat * y.mat;
-            } else {
-                z.rows = y.rows;
-                z.cols = y.cols;
-                for (var i=0; i<y.rows; i++) {
-                    var row = [];
-                    for (var j=0; j<y.cols; j++) {
-                        row.push(this.mat * y.mat[i][j]);
-                    }
-                    z.mat.push(row);
-                }
-            }            
-        } else if (this.rows == 1 && this.cols == 1) {
-            if (this.mat[0] == 0) {
-                z.rows = 0;
-                z.cols = 0;
-                z.mat = 0;
-            } if (y.rows == 0 && y.cols == 0) {
-                z.rows = y.rows;
-                z.cols = y.cols;
-                z.mat = this.mat[0][0] * y.mat;
-            } else {
-                z.rows = y.rows;
-                z.cols = y.cols;
-                z.mat = [];
-                for (var i=0; i<y.rows; i++) {
-                    var row = [];
-                    for (var j=0; j<y.cols; j++) {
-                        row.push(this.mat[0][0] * y.mat[i][j]);
-                    }
-                    z.mat.push(row);
-                }
-            }
-        } else {
-            if (y.cols == 0 && y.rows == 0) {
-                z.rows = this.rows;
-                z.cols = this.cols;
-                for (var i=0; i<this.rows; i++) {
-                    var row = [];
-                    for (var j=0; j<this.cols; j++) {
-                        row.push(this.mat[i][j] * y.mat);
-                    }
-                    z.mat.push(row);
-                }
-            } else {
-                z.rows = this.rows;
-                z.cols = y.cols;
 
-                for (var i=0; i<this.rows; i++) {
-                    var cols = [];
-                    for (var j=0;j<y.cols; j++) {
-                        var col = [];
-                        for (var k=0; k<y.rows; k++) {
-                            col.push(y.mat[k][j]);
-                        }
-                        cols.push(col);
-                    }
-
-                    var row = [];
-                    for (var j=0; j<cols.length; j++) {
-                        var sum = 0;
-                        for (var k=0; k<cols[j].length; k++) {
-                            sum += this.mat[i][k] * cols[j][k];
-                        }
-                        row.push(sum);
-                    }
-                    z.mat.push(row);
-                }
-            }
-        }
+    let z = torch.const();
+    function _mul(e) {
+        e = e * y;
+        return e;
     }
+
+    var darray = iter(this.darray, _mul);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
-    z.nodes.push(y);
-    z.type = 1;
+    z.type = OP;
     z.op = MUL;
     return z;
 }
 
-Tensor.prototype.sub = function (y) {
-    var z = torch.tensor();
-    z.rows = y.rows;
-    z.cols = y.cols;
-    if (y.rows == 0 && y.cols == 0) {  
-        if (this.rows == 0 && this.cols == 0) {
-            z.mat = this.mat - y.mat;
-        } else if (this.rows == 1 && this.cols == 1) {
-            z.rows = 1;
-            z.cols = 1;
-            z.mat.push([this.mat[0][0] - y.mat]);
-        } else {
-            z.rows = this.rows;
-            z.cols = this.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] - y.mat);
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        if (this.rows == 0 && this.cols == 0) {
-            if (y.rows == 1 && y.cols == 1) {
-                var row = [];
-                row.push(this.mat - y.mat[0][0]);
-                z.mat.push(row);
-            } else {
-                for (var i=0; i<z.rows; i++) {
-                    var row = [];
-                    for (var j=0; j<z.cols; j++) {
-                        row.push(this.mat - y.mat[i][j]);
-                    }
-                    z.mat.push(row);
-                }
-            }
-        } else if (this.rows == 1 && this.cols == 1) {
-            if (y.rows == 0 && y.cols == 0) {
-                z.mat = this.mat[0][0] - y.mat;
-            } else if (y.rows == 1 && y.cols == 1) {
-                z.mat.push([this.mat[0][0] - y.mat[0][0]]);
-            }
-        } 
-        else {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] - y.mat[i][j]);
-                }
-                z.mat.push(row);
-            }
-        }
+Tensor.prototype.matmul = function (y) {
+    if (typeof y !== "object") {
+        throw new Error('MatMul oprand2 must is Object');
     }
 
+    if (y.class != 'tensor') {
+        throw new Error('MatMul oprand2 must is Tensor');
+    }
+
+    if (this.shape[1] != y.shape[0]) {
+        throw new Error('MatMul oprand1 and oprand2 rank is Mismatch');
+    }
+
+    var z = torch.tensor();
+    var darray = [];
+    for (var i=0; i<this.shape[0]; i++) {
+        var cols = [];
+        for (var j=0; j<y.shape[1]; j++) {
+            var col = [];
+            for (var k=0; k<y.shape[0]; k++) {
+                col.push(y.darray[k][j]);
+            }
+            cols.push(col);
+        }
+        var row = [];
+        for (var j=0; j<cols.length; j++) {
+            var sum = 0;
+            for (var k=0; k<cols[j].length; k++) {
+                sum += this.darray[i][k] * cols[j][k];
+            }
+            row.push(sum);
+        }
+        darray.push(row);
+    }
+
+    z.darray = darray;
+    z.shape[0] = this.shape[0];
+    z.shape[1] = y.shape[1];
     z.nodes.push(this);
     z.nodes.push(y);
-    z.type = 1;
+    z.type = OP;
+    z.op = MATMUL;
+    return z;
+}
+
+Tensor.prototype.sub = function (y) {
+    if (typeof y !== "object" && y.class != "tensor") {
+        throw new Error('Sub oprand2 must is tensor');
+    }
+
+    var z = torch.tensor();
+    function _sub(e) {
+        e = e - y.darray[0][0];
+        return e;
+    }
+
+    var darray = iter(this.darray, _sub);
+    z.darray = darray;
+    z.shape = this.shape;
+    z.nodes.push(this);
+    z.nodes.push(y);
+    z.type = OP;
     z.op = SUB;
     return z;
 }
 
 Tensor.prototype.div = function (y) {
-    var z = torch.tensor();
-    z.rows = y.rows;
-    z.cols = y.cols;
-
-    if (this.rows == 0 && this.cols == 0) {
-        if (y.rows == 0 && y.cols == 0) {
-            z.mat = this.mat / y.mat;
-        } else {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat / y.mat[i][j]);
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        if (y.rows == 1 && y.cols == 1) {
-            z.rows = this.rows;
-            z.cols = this.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] / y.mat[0][0]);
-                }
-                z.mat.push(row);
-            }
-        } else if (y.rows == 0 && y.cols == 0) {
-            z.rows = this.rows;
-            z.cols = this.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] / y.mat);
-                }
-                z.mat.push(row);
-            }
-        } else {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] / y.mat[i][j]);
-                }
-                z.mat.push(row);
-            }
-        }
+    if (typeof y !== "number") {
+        throw new Error('Div oprand2 must is Number');
     }
-    
+
+    var z = torch.tensor();
+    function _div(e) {
+        e = e / y;
+        return e;
+    }
+
+    var darray = iter(this.darray, _div);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
     z.nodes.push(y);
-    z.type = 1;
+    z.type = OP;
     z.op = DIV;
     return z;
 }
 
 Tensor.prototype.pow = function (y) {
-    var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-   
-    if (z.rows == 0 && z.cols == 0) {
-        if (typeof y == "number") {
-            z.mat = Math.pow(this.mat, y);
-        } else if (y.rows == 0 && y.cols == 0) {
-            z.mat = Math.pow(this.mat, y.mat);
-        } else if (y.rows == 1 && y.cols == 1) {
-            z.mat = Math.pow(this.mat, y.mat[0][0]);
-        } else {
-            z.rows = y.rows;
-            z.cols = y.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(Math.pow(this.mat, y.mat[i][j]));
-                }
-                z.mat.push(row);
-            }
-        }
-    } else if (z.rows == 1 && z.cols == 1) {
-        if (y.rows == 0 && y.cols == 0) {
-            for (var i=0; i<this.rows; i++) {
-                var row = [];
-                for (var j=0; j<this.cols; j++) {
-                    row.push(Math.pow(this.mat[i][j], y.mat));
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        for (var i=0; i<this.rows; i++) {
-            var row = [];
-            for (var j=0; j<this.cols; j++) {
-                row.push(Math.pow(this.mat[i][j], y));
-            }
-            z.mat.push(row);
-        }
+    if (typeof y !== "number") {
+        throw new Error('Pow oprand2 must is Number');
     }
 
+    var z = torch.tensor();
+    function _pow(e) {
+        e = math.pow(e, y);
+        return e;
+    }
+
+    var darray = iter(this.darray, _pow);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
     z.nodes.push(y);
-
-    z.type = 1;
+    z.type = OP;
     z.op = POW;
     return z;
 }
 
 Tensor.prototype.log = function () {
-    var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-
-    if (z.rows == 0 && z.cols == 0) {
-        if (typeof y == "number") {
-            z.mat = Math.log(this.mat);
-        } else if (y.rows == 0 && y.cols == 0) {
-            z.mat = Math.log(this.mat);
-        } else {
-            z.rows = y.rows;
-            z.cols = y.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(Math.log(this.mat[i][j]));
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        for (var i=0; i<this.rows; i++) {
-            var row = [];
-            for (var j=0; j<this.cols; j++) {
-                row.push(Math.log(this.mat[i][j]));
-            }
-            z.mat.push(row);
-        }
+    if (typeof y !== "number") {
+        throw new Error('Log oprand2 must is Number');
     }
 
+    var z = torch.tensor();
+    function _log(e) {
+        e = math.log(e);
+        return e;
+    }
+
+    var darray = iter(this.darray, _log);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
-    z.type = 1;
+    z.type = OP;
     z.op = POW;
     return z;
 }
 
-Tensor.prototype.mul1 = function (y) {
-    var z = torch.tensor();
-    if (typeof y == "number") {
-        z.rows = this.rows;
-        z.cols = this.cols;
-        for (var i=0; i<z.rows; i++) {
-            var row = [];
-            for (var j=0; j<z.cols; j++) {
-                row.push(this.mat[i][j] * y);
-            }
-            z.mat.push(row);
-        }
-    } else {
-        z.rows = y.rows;
-        z.cols = y.cols;
-        for (var i=0; i<z.rows; i++) {
-            var row = [];
-            for (var j=0; j<z.cols; j++) {
-                row.push(this.mat[0][0] * y.mat[i][j]);
-            }
-            z.mat.push(row);
-        }
-    }
-    return z;
-}
-
-Tensor.prototype.mul2 = function (y) {
-    var z = torch.tensor();
-    z.rows = y.rows;
-    z.cols = y.cols;
-    for (var i=0; i<z.rows; i++) {
-        var row = [];
-        for (var j=0; j<z.cols; j++) {
-            row.push(this.mat[i][j] * y.mat[i][j]);
-        }
-        z.mat.push(row);
-    }
-    return z;
-}
-
 Tensor.prototype.add = function (y) {
+    if (typeof y !== "object" && y.class != "tensor") {
+        throw new Error('Add oprand2 must is tensor');
+    }
     var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-
-    if (y.rows == 0 && y.cols == 0) {
-        if (this.rows == 0 && this.cols == 0) {
-            z.mat = this.mat + y.mat;
-        } else {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] + y.mat);
-                }
-                z.mat.push(row);
-            }
-        }
-    } else {
-        if (this.rows == 0 && this.cols == 0) {
-            z.rows = y.rows;
-            z.cols = y.cols;
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat + y.mat[i][j]);
-                }
-                z.mat.push(row);
-            }
-        } else {
-            for (var i=0; i<z.rows; i++) {
-                var row = [];
-                for (var j=0; j<z.cols; j++) {
-                    row.push(this.mat[i][j] + y.mat[i][j]);
-                }
-                z.mat.push(row);
-            }
-        }
+    function _add(e) {
+        e = e + y.darray[0][0];
+        return e;
     }
 
+    var darray = iter(this.darray, _add);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
     z.nodes.push(y);
-
-    z.type = 1;
+    z.type = OP;
     z.op = ADD;
     return z;
 }
 
 Tensor.prototype.sub_ = function (y) {
-    if (this.rows == 0 && this.cols == 0) {
-        if (y.rows == 0 && y.cols == 0) {
-            this.mat -= y.mat;
-        }
-    } else {
-        if (y.rows == 0 && y.cols == 0) {
-            for (var i=0; i<this.rows; i++) {
-                for (var j=0; j<this.cols; j++) {
-                    this.mat[i][j] -= y.mat;
-                }
-            }
-        } else {
-            for (var i=0; i<this.rows; i++) {
-                for (var j=0; j<this.cols; j++) {
-                    this.mat[i][j] -= y.mat[i][j];
-                }
-            }
-        }
+    if (typeof y !== "object" && y.class != "tensor") {
+        throw new Error('Sub oprand2 must is tensor');
     }
+
+    function _sub(e) {
+        e = e - y.darray[0][0];
+        return e;
+    }
+
+    var darray = iter(this.darray, _sub);
+    this.darray = darray;
 }
 
 Tensor.prototype.minus = function () {
     var z = torch.tensor();
-    z.rows = this.rows;
-    z.cols = this.cols;
-
-    if (this.rows == 0 && this.cols == 0) {
-        z.mat = -this.mat;
-    } else {
-        for (var i=0; i<z.rows; i++) {
-            var rows = [];
-            for (var j=0; j<z.cols; j++) {
-               rows.push(-this.mat[i][j]);
-            }
-            z.mat.push(rows);
-        }
+    function _minus(e) {
+        e = -e;
+        return e;
     }
 
+    var darray = iter(this.darray, _minus);
+    z.darray = darray;
+    z.shape = this.shape;
     z.nodes.push(this);
-    z.type = 1;
+    z.type = OP;
     z.op = MINUS;
     return z;
 }
 
 Tensor.prototype.derive = function(v) {
     if (this.constant) {
-        return 0;
+        return torch.tensor([[0]]);
     }
     if (this.func !== null) {
-        return 1;
+        return torch.tensor([[1]]);
     }
 
     switch (this.type) {
@@ -772,24 +426,17 @@ Tensor.prototype.derive = function(v) {
                 case ADD:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                if (typeof l === "number") {
-                    l = torch.tensor(l);
-                }
-                if (typeof r === "number") {
-                    r = torch.tensor(r);
-                }
                 return l.add(r);
 
                 case SUB:
                 var l = this.nodes[0].derive();
                 var r = this.nodes[1].derive();
-                if (typeof r === "number") {
-                    r = torch.tensor(r);
-                }
-                if (typeof l === "number") {
-                    l = torch.tensor(l);
-                }
                 return l.sub(r);
+
+                case MATMUL:
+                var l = this.nodes[0].derive();
+                var r = this.nodes[1].derive();
+                return this.nodes[1].matmul(l).add(r.matmul(this.nodes[0]));
 
                 case MUL:
                 var l = this.nodes[0].derive();
@@ -879,9 +526,9 @@ Tensor.prototype.derive = function(v) {
 
         case TENSOR:
             if (this.constant) {
-                return 0;
+                return torch.tensor([[0]]);
             } else if (this.function !== null) {
-                return 1;
+                return torch.tensor([[1]]);
             }
         break;
     }

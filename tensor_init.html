@@ -5,25 +5,50 @@
     <script type="text/javascript" src="torch.js"></script>
 </head>
 <body style="height: 100%; margin: 0">
-        <script type="text/javascript">
-           var x = torch.tensor([[[1, 2, 3], [2, 3, 4]], [[2, 4, 5], [2, 3, 4]]]);
-           console.log(x.shape); //[2, 2, 3]
-           console.log(x);
+    <script type="text/javascript">
+        var x = torch.tensor([[[1, 2, 3], [2, 3, 4]], [[2, 4, 5], [2, 3, 4]]]);
+        console.log(x.shape); //[2, 2, 3]
+        console.log(x);
 
-           var x = torch.tensor([[[1, 2, 3], [2, 3, 4]]]);
-           console.log(x.shape); //[1, 2, 3]
-           console.log(x);
+        var x = torch.tensor([[[1, 2, 3], [2, 3, 4]]]);
+        console.log(x.shape); //[1, 2, 3]
+        console.log(x);
 
-           var x = torch.tensor([1, 2, 3]);
-           console.log(x.shape); //[3]
-           console.log(x);
+        var x = torch.tensor([1, 2, 3]);
+        console.log(x.shape); //[3]
+        console.log(x);
 
-           var x = torch.tensor([1, 2, 3], 0.5);
-           console.log(x);
+        var x = torch.tensor([1, 2, 3], 0.5);
+        console.log(x);
 
-           var x = torch.tensor([-2, 1, 2]);
-        //    var relu = nn.ReLU();
-           console.log(x.ReLU());
-        </script>
+        console.log('relu');
+        var x = torch.tensor([[-2, 1, 2], [1, -1, 2]]);
+        console.log(x.shape);
+        console.log(x.ReLU());
+
+        console.log('reduce_sum');
+        var x = torch.tensor([[-2, 1, 2], [1, -1, 2]]);
+        console.log(x.shape);
+        console.log(x.reduce_sum());
+
+        console.log('transpose');
+        var x = torch.tensor([[-2, 1, 2], [1, -1, 2]]);
+        console.log(x.shape);
+        console.log(x.transpose());
+        console.log(x.shape);
+
+        console.log('mul');
+        var x = torch.tensor([[-2, 1, 2], [1, -1, 2]]);
+        console.log(x.shape);
+        console.log(x.mul(2));
+
+        console.log('matmul');
+        var x = torch.tensor([[-2, 1, 2], [1, -1, 2]]);
+        var y = torch.tensor([[-2, 1], [1, -1], [1, 1]]);
+        console.log(x.shape);
+        console.log(y.shape);
+        console.log(y);
+        console.log(x.matmul(y));
+    </script>
 </body>
 </html>

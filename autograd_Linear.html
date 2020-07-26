@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <script type="text/javascript" src="torch.js"></script>
+    <script type="text/javascript" src="mnist.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+        <div id="container" style="height: 100%"></div>
+        <script type="text/javascript" src="echarts.min.js"></script>
+        <script type="text/javascript">
+            var x  = torch.const([[2, 3, 4, 5]]);
+            var w_x = torch.tensor([[0.1], [0.2], [0.4], [0.5]])
+            var b_x = torch.tensor([[0]]);
+
+            function forward(x) {
+                return torch.function(x.matmul(w_x).add(b_x), 'linear');
+            }
+
+            var y_ = forward(x);
+            console.log(y_);
+
+            var y = torch.const([[10]]);
+            console.log(torch.tensor(y_));
+            var loss = torch.function(torch.tensor(y_).sub(y), 'loss');
+            console.log(loss);
+
+            loss.backward();
+        </script>
+</body>
+</html>
